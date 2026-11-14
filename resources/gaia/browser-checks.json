@@ -1,0 +1,36 @@
+[
+  {
+    "viewport": "desktop",
+    "width": 1365,
+    "height": 1050,
+    "visible_sources": 200,
+    "overflow": false,
+    "js_errors": [],
+    "computed_styles": {
+      "color": "rgb(186, 200, 217)",
+      "background": "rgb(5, 7, 15)"
+    },
+    "error_recovery": true,
+    "keyboard_selection": true,
+    "json_download": true,
+    "stale_data_cleared": true,
+    "empty_state": true
+  },
+  {
+    "viewport": "mobile",
+    "width": 390,
+    "height": 844,
+    "visible_sources": 200,
+    "overflow": false,
+    "js_errors": [],
+    "computed_styles": {
+      "color": "rgb(186, 200, 217)",
+      "background": "rgb(5, 7, 15)"
+    },
+    "error_recovery": true,
+    "keyboard_selection": true,
+    "json_download": true,
+    "stale_data_cleared": true,
+    "empty_state": true
+  }
+]

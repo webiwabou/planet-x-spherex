@@ -1,0 +1,61 @@
+{
+  "generated_at": "2026-11-14T23:41:07.683427+00:00",
+  "results": [
+    {
+      "target_id": "barnards_star",
+      "status": "ok",
+      "file": "barnards_star.json",
+      "catalogue_count": 200,
+      "in_frame_count": 200,
+      "truncated": true,
+      "retrieved_at": "2026-11-14T23:40:50.761773+00:00",
+      "spherex_coverage": "not tested",
+      "target_identification": "not performed; field context only"
+    },
+    {
+      "target_id": "epsilon_indi_b",
+      "status": "ok",
+      "file": "epsilon_indi_b.json",
+      "catalogue_count": 200,
+      "in_frame_count": 137,
+      "truncated": true,
+      "retrieved_at": "2026-11-14T23:40:54.248339+00:00",
+      "spherex_coverage": "not tested",
+      "target_identification": "not performed; field context only"
+    },
+    {
+      "target_id": "wise_0855",
+      "status": "ok",
+      "file": "wise_0855.json",
+      "catalogue_count": 200,
+      "in_frame_count": 148,
+      "truncated": true,
+      "retrieved_at": "2026-11-14T23:40:59.160953+00:00",
+      "spherex_coverage": "not tested",
+      "target_identification": "not performed; field context only"
+    },
+    {
+      "target_id": "rw_aurigae",
+      "status": "ok",
+      "file": "rw_aurigae.json",
+      "catalogue_count": 200,
+      "in_frame_count": 200,
+      "truncated": true,
+      "retrieved_at": "2026-11-14T23:41:02.919915+00:00",
+      "spherex_coverage": "not tested",
+      "target_identification": "not performed; field context only"
+    },
+    {
+      "target_id": "r_draconis",
+      "status": "ok",
+      "file": "r_draconis.json",
+      "catalogue_count": 200,
+      "in_frame_count": 104,
+      "truncated": true,
+      "retrieved_at": "2026-11-14T23:41:07.161610+00:00",
+      "spherex_coverage": "not tested",
+      "target_identification": "not performed; field context only"
+    }
+  ],
+  "scope": "Gaia field queries and synthetic TAN-grid projection; not SPHEREx end-to-end tests"
+}

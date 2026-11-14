@@ -11,6 +11,19 @@ Public-facing interactive web tool to visualize and discover moving objects, bro
 
 ---
 
+## Member 4 — Gaia DR3 progress
+
+Real Gaia field queries, epoch propagation, WCS projection API, local caching and a standalone demo are implemented. Run:
+
+```bash
+pip install -r astro_engine/requirements.txt
+python -m uvicorn main:app --app-dir astro_engine --host 127.0.0.1 --port 8000
+```
+
+Open **http://localhost:8000/catalogues/demo** and click **Ver ejemplo guardado** for a saved real Gaia example, or query the archive. See [setup, API contract and validation](docs/MEMBER4_API.md).
+
+**Current status:** the original sky canvas and spectra below are simulations, and the Next.js checkout has missing shared imports. This Gaia demo works independently; its background is a test WCS grid, not SPHEREx imagery. Full integration and deployment await the other subsystems.
+
 ## 🌟 Key Features
 
 1. **Digital Blink Comparator Engine:**
