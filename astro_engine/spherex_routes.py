@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import httpx
 import numpy as np
@@ -13,18 +14,22 @@ from pydantic import BaseModel, Field
 
 from pipeline import parse_sky_coordinates
 from spherex_archive import (
+    RELEASES,
     SIA_MAX_ROWS,
     ArchiveSearch,
     ArchiveUnavailable,
+    Observation,
     SearchRegion,
     get_cutout,
+    package_cutouts_mef,
     search_observations,
 )
 from spherex_fits import CutoutMetadata, extract_cutout_metadata
 from spherex_processing import process_series
 
 
-router = APIRouter(prefix="/api/spherex", tags=["SPHEREx"])
+router = APIRouter(prefix="/api/spherex", tags=["SPHEREx — Member 1 & 2"])
+ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def parse_region(
@@ -53,9 +58,12 @@ def archive_error(error: ArchiveUnavailable) -> HTTPException:
 def observations(
     region: Annotated[SearchRegion, Depends(parse_region)],
     limit: Annotated[int, Query(ge=1, le=SIA_MAX_ROWS)] = 500,
+    release: Annotated[Literal["dr1", "qr3"] | None, Query()] = None,
+    detector_id: Annotated[int | None, Query(ge=1, le=6)] = None,
 ) -> ArchiveSearch:
+    releases: tuple[Literal["dr1", "qr3"], ...] = (release,) if release is not None else RELEASES
     try:
-        return search_observations(region, limit)
+        return search_observations(region, limit, releases=releases, detector_id=detector_id)
     except ArchiveUnavailable as exc:
         raise archive_error(exc) from exc
 
@@ -90,17 +98,77 @@ def cutout(observation_id: str, region: Annotated[SearchRegion, Depends(parse_re
 def metadata(observation_id: str, region: Annotated[SearchRegion, Depends(parse_region)]) -> CutoutMetadata:
     entry, data, _ = fetch_observation(observation_id, region)
     try:
-        return extract_cutout_metadata(data, entry)
+        return extract_cutout_metadata(data, entry, target_coord=(region.ra_deg, region.dec_deg))
     except (OSError, ValueError, KeyError) as exc:
         detail = {"code": "invalid_fits_metadata", "message": "IRSA cutout metadata could not be read."}
         raise HTTPException(502, detail=detail) from exc
+
+
+class CutoutBundleQuery(BaseModel):
+    ra: str
+    dec: str
+    fov_arcmin: float = Field(default=8, ge=0.5, le=12)
+    observation_ids: list[str] = Field(min_length=1, max_length=12)
+
+
+@router.post(
+    "/cutouts/mef",
+    response_class=Response,
+    responses={200: {"content": {"application/fits": {}}}},
+)
+def cutouts_mef(query: CutoutBundleQuery) -> Response:
+    """Package multiple SPHEREx cutouts into a single Multi-Extension FITS file with CUTOUT_INFO."""
+    region = parse_region(query.ra, query.dec, query.fov_arcmin)
+    try:
+        result = search_observations(region, SIA_MAX_ROWS)
+        by_id = {item.observation_id: item for item in result.observations}
+        missing = set(query.observation_ids) - by_id.keys()
+        if missing:
+            status = 409 if result.truncated else 404
+            raise HTTPException(status, detail={"code": "observations_missing", "message": ", ".join(sorted(missing))})
+        pairs: list[tuple[Observation, bytes]] = []
+        for obs_id in dict.fromkeys(query.observation_ids):
+            obs = by_id[obs_id]
+            data, _ = get_cutout(obs, region)
+            pairs.append((obs, data))
+        mef_bytes = package_cutouts_mef(pairs, region)
+    except ArchiveUnavailable as exc:
+        raise archive_error(exc) from exc
+    except (OSError, ValueError, KeyError) as exc:
+        raise HTTPException(502, detail={"code": "invalid_fits_metadata", "message": str(exc)}) from exc
+    return Response(
+        content=mef_bytes,
+        media_type="application/fits",
+        headers={"Content-Disposition": 'attachment; filename="spherex_cutouts_mef.fits"'},
+    )
+
+
+def _auto_select_candidates(observations_list: list[Observation], detector_id: int, max_count: int = 6) -> list[str]:
+    """Select chronological observations for a detector spread across distinct observation epochs."""
+    matching = [obs for obs in observations_list if obs.detector_id == detector_id]
+    if not matching:
+        return []
+    groups: list[list[Observation]] = []
+    first_mjd: float | None = None
+    for obs in matching:
+        if first_mjd is None or (obs.archive_start_mjd - first_mjd) > 1.0:
+            groups.append([])
+            first_mjd = obs.archive_start_mjd
+        groups[-1].append(obs)
+    selected: list[str] = []
+    # Pick up to 2 per epoch group first, then fill up to max_count
+    for group in groups:
+        for obs in group[:2]:
+            if len(selected) < max_count:
+                selected.append(obs.observation_id)
+    return selected
 
 
 class FrameQuery(BaseModel):
     ra: str
     dec: str
     fov_arcmin: float = Field(default=8, ge=0.5, le=12)
-    observation_ids: list[str] = Field(min_length=1, max_length=6)
+    observation_ids: list[str] | None = Field(default=None, min_length=1, max_length=12)
     detector_id: int = Field(ge=1, le=6)
     wavelength_um: float = Field(gt=0, le=6)
     bandwidth_um: float = Field(gt=0, le=1)
@@ -131,15 +199,20 @@ def frames(query: FrameQuery) -> QuickLookSeries:
     try:
         result = search_observations(region, SIA_MAX_ROWS)
         by_id = {item.observation_id: item for item in result.observations}
-        missing = set(query.observation_ids) - by_id.keys()
+        target_ids = (
+            list(dict.fromkeys(query.observation_ids))
+            if query.observation_ids
+            else _auto_select_candidates(result.observations, query.detector_id)
+        )
+        missing = set(target_ids) - by_id.keys()
         if missing:
             status = 409 if result.truncated else 404
             raise HTTPException(status, detail={"code": "observations_missing", "message": ", ".join(sorted(missing))})
         inputs = []
-        for observation_id in dict.fromkeys(query.observation_ids):
+        for observation_id in target_ids:
             item = by_id[observation_id]
             data, _ = get_cutout(item, region)
-            inputs.append((extract_cutout_metadata(data, item), data))
+            inputs.append((extract_cutout_metadata(data, item, target_coord=(region.ra_deg, region.dec_deg)), data))
     except ArchiveUnavailable as exc:
         raise archive_error(exc) from exc
     except (OSError, ValueError, KeyError) as exc:
@@ -179,6 +252,25 @@ def frames(query: FrameQuery) -> QuickLookSeries:
         region=region, width=width, height=height, wcs_header=dict(series.grid.to_header()),
         display_limits_mjy_sr=series.display_limits, frames=output,
     )
+
+
+@router.get("/targets")
+def spherex_targets() -> dict[str, Any]:
+    """Return verified SPHEREx data availability and sample metadata manifest for the 5 NASA targets."""
+    manifest_path = ROOT_DIR / "resources/spherex/samples/manifest.json"
+    if manifest_path.exists():
+        return json.loads(manifest_path.read_text(encoding="utf-8"))
+    targets_path = ROOT_DIR / "resources/gaia/targets.json"
+    return json.loads(targets_path.read_text(encoding="utf-8"))
+
+
+@router.get("/samples/{target_id}")
+def spherex_sample_target(target_id: str) -> dict[str, Any]:
+    """Return pre-verified SPHEREx observations and extracted FITS cutout metadata for a benchmark target."""
+    sample_path = ROOT_DIR / "resources/spherex/samples" / f"{target_id}.json"
+    if not sample_path.exists():
+        raise HTTPException(404, detail={"code": "sample_not_found", "message": f"No saved sample for '{target_id}'."})
+    return json.loads(sample_path.read_text(encoding="utf-8"))
 
 
 @router.get("/demo", include_in_schema=False)
