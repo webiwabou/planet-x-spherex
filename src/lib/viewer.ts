@@ -250,10 +250,10 @@ export const setRate = (value: number) => app.set({ rate: Math.min(8, Math.max(0
 
 // Data
 
-let inflight: { key: string; detectorId: number; controller: AbortController; promise: Promise<Field | null> } | null = null;
+let inflight: { key: string; detectorId: number; fov: number; controller: AbortController; promise: Promise<Field | null> } | null = null;
 
-export function loadField(spec: FieldSpec): Promise<Field | null> {
-  if (inflight && inflight.key === spec.key && inflight.detectorId === spec.detectorId) return inflight.promise;
+export function loadField(spec: FieldSpec, quiet = false): Promise<Field | null> {
+  if (inflight && inflight.key === spec.key && inflight.detectorId === spec.detectorId && inflight.fov === spec.fovArcmin) return inflight.promise;
   inflight?.controller.abort();
   const controller = new AbortController();
   const previous = app.get().fields[spec.key];
@@ -280,14 +280,42 @@ export function loadField(spec: FieldSpec): Promise<Field | null> {
       if (isAbort(error) || controller.signal.aborted) return null;
       const e = error instanceof ApiError ? error : new ApiError("unknown", String(error));
       const keep = previous && previous.detectorId !== spec.detectorId ? previous.detectorId : spec.detectorId;
-      app.set({ load: { status: "error", spec, code: e.code, message: e.message, retryable: e.retryable }, detectorId: keep });
+      if (quiet) app.set({ load: { status: "idle" }, detectorId: keep });
+      else app.set({ load: { status: "error", spec, code: e.code, message: e.message, retryable: e.retryable }, detectorId: keep });
       return null;
     })
     .finally(() => {
       if (inflight?.controller === controller) inflight = null;
     });
-  inflight = { key: spec.key, detectorId: spec.detectorId, controller, promise };
+  inflight = { key: spec.key, detectorId: spec.detectorId, fov: spec.fovArcmin, controller, promise };
   return promise;
+}
+
+const MAX_CUTOUT_ARCMIN = 12;
+const widened = new Set<string>();
+
+// Zooming out past a live field's cutout asks once for the widest cutout the backend allows; the old frames stay meanwhile
+export function widenFieldIfNeeded(c: Camera) {
+  const f = activeField();
+  if (!f || app.get().apiKind !== "live" || app.get().load.status === "loading") return;
+  // A framed field fills 62% of the short side; only zooming out well past that asks for more sky
+  if (f.fovArcmin >= MAX_CUTOUT_ARCMIN || c.zoom * f.sizeArcsec > 0.4 * Math.min(viewport.width, viewport.height - 120)) return;
+  const id = `${f.key}|${f.detectorId}`;
+  if (widened.has(id)) return;
+  widened.add(id);
+  const spec: FieldSpec = {
+    key: f.key,
+    label: f.label,
+    targetId: f.targetId,
+    raDeg: f.raDeg,
+    decDeg: f.decDeg,
+    fovArcmin: MAX_CUTOUT_ARCMIN,
+    detectorId: f.detectorId,
+    wavelengthUm: f.wavelengthUm,
+    bandwidthUm: f.bandwidthUm,
+    observationIds: f.observationIds,
+  };
+  void loadField(spec, true);
 }
 
 export function retryLoad() {

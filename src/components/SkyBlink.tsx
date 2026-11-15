@@ -32,6 +32,7 @@ import {
   togglePlay,
   viewport,
   visitTarget,
+  widenFieldIfNeeded,
 } from "@/lib/viewer";
 import { HelpSheet } from "./HelpSheet";
 import { PlayButton } from "./PlayButton";
@@ -160,6 +161,7 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
       const f = activeField();
       const epochMs = f ? (f.times.length ? f.times[Math.round(positionAt(f.times, c.timestamp))] : null) : undefined;
       writeUrlView({ raDeg, decDeg, fovArcmin: viewport.width / c.zoom / 60, epochMs, detectorId: f?.detectorId, pitch: c.pitch, bearing: c.bearing });
+      if (levelsOf(c.zoom).macro < 0.5) widenFieldIfNeeded(c);
     };
     const schedule = () => {
       clearTimeout(timer);
