@@ -1,5 +1,5 @@
 {
- "recorded_at": "2026-11-15T07:46:13.892Z",
+ "recorded_at": "2026-11-15T07:55:01.990Z",
  "source": "POST /api/spherex/frames from astro_engine, SPHEREx DR1 and QR3 at IRSA",
  "targets_file": "targets.json",
  "series": [
@@ -17,6 +17,24 @@
      "2025W35_1A_0008_4/D3",
      "2026W12_2A_0520_1/D3",
      "2026W19_1A_0216_1/D3"
+    ]
+   }
+  },
+  {
+   "target_id": "epsilon_indi_b",
+   "file": "frames/epsilon_indi_b_d2.json",
+   "query": {
+    "ra": "331.04414658852124",
+    "dec": "-56.78284419511611",
+    "fov_arcmin": 8,
+    "detector_id": 2,
+    "wavelength_um": 1.213,
+    "bandwidth_um": 0.0293,
+    "observation_ids": [
+     "2025W17_4B_0222_3/D2",
+     "2025W23_2B_0258_2/D2",
+     "2025W41_1A_0081_1/D2",
+     "2026W40_1A_0613_1/D2"
     ]
    }
   },
