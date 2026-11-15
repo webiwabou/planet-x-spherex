@@ -27,7 +27,11 @@ The live demos require access to IRSA and the ESA Gaia Archive. The saved Gaia e
 
 The frontend is a Next.js app under `src`. With Node 18 or later, run `npm install` and then `npm run dev`, and open http://localhost:3000.
 
-By default it shows recorded `POST /api/spherex/frames` responses for the five targets from `public/fixtures`, so it runs without the backend or IRSA. Add `?data=live` to the address, or set `NEXT_PUBLIC_SPHEREX_DATA=live` at build time, to call the backend at `NEXT_PUBLIC_SPHEREX_API` (default `http://localhost:8000`).
+By default it shows recorded `POST /api/spherex/frames` responses for the five targets from `public/fixtures`, so it runs without the backend or IRSA. The data mode comes from `?data=` in the address or `NEXT_PUBLIC_SPHEREX_DATA` at build time:
+
+- `mock` (default): recorded frames only.
+- `live`: every request goes to the backend at `NEXT_PUBLIC_SPHEREX_API` (default `http://localhost:8000`).
+- `auto`: recorded frames for the five targets, and the backend for every other position or detector.
 
 Each target's series is one narrow band seen at several visits. Its observation IDs, wavelength and bandwidth are in `src/lib/series-presets.json`. With the backend running, `npm run record-fixtures` records fresh responses.
 
@@ -38,6 +42,8 @@ python -m pytest astro_engine/tests -q
 docker build -t planet-x-spherex .
 docker run --rm -p 8000:8000 planet-x-spherex
 ```
+
+The image serves the sky viewer at http://localhost:8000/ and the API under `/api` from the same origin. It builds the frontend as a static export in `auto` mode, so the five targets open instantly from recordings and other positions query IRSA through the backend. The backend serves the export only when `WEB_DIR` is set, as the image does, so local runs are unchanged.
 
 The backend exposes `/health`. Set `SPHEREX_CACHE_DIR` and `GAIA_CACHE_DIR` to writable directories to control local cache storage.
 

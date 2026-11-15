@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from models import ExtractedSpectrumResponse, SkyCoordinateInput, DifferenceImageResult
 from catalogue_routes import router as catalogue_router
 from spherex_routes import router as spherex_router
@@ -57,3 +61,8 @@ def extract_spectrum(
 
 app.include_router(catalogue_router)
 app.include_router(spherex_router)
+
+# The Docker image serves the exported sky viewer from WEB_DIR; mounted last so every API route keeps priority
+WEB_DIR = os.environ.get("WEB_DIR")
+if WEB_DIR and Path(WEB_DIR).is_dir():
+    app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
