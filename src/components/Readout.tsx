@@ -98,7 +98,9 @@ export function Readout({ onHelp, helpOpen }: { onHelp: () => void; helpOpen: bo
           />
         </span>
       </div>
-      <div className="dim provenance">{apiKind === "live" ? "SPHEREx DR1 and QR3, live from IRSA" : "SPHEREx DR1 and QR3, recorded frames"}</div>
+      <div className="dim provenance">
+        {apiKind === "live" ? "SPHEREx DR1 and QR3, live from IRSA" : apiKind === "auto" ? "SPHEREx DR1 and QR3, recorded targets, live search" : "SPHEREx DR1 and QR3, recorded frames"}
+      </div>
       <button type="button" className="help-btn" aria-label="Show gestures" aria-expanded={helpOpen} onClick={onHelp}>
         ?
       </button>
