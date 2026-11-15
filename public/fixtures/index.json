@@ -1,5 +1,5 @@
 {
- "recorded_at": "2026-11-15T07:55:01.990Z",
+ "recorded_at": "2026-11-15T08:16:28.265Z",
  "source": "POST /api/spherex/frames from astro_engine, SPHEREx DR1 and QR3 at IRSA",
  "targets_file": "targets.json",
  "series": [
@@ -70,6 +70,23 @@
     "observation_ids": [
      "2025W36_1A_0663_1/D1",
      "2026W37_1A_0524_1/D1"
+    ]
+   }
+  },
+  {
+   "target_id": "wise_0855",
+   "file": "frames/wise_0855_d5.json",
+   "query": {
+    "ra": "133.79512916666667",
+    "dec": "-7.245147222222222",
+    "fov_arcmin": 8,
+    "detector_id": 5,
+    "wavelength_um": 4.3652,
+    "bandwidth_um": 0.038,
+    "observation_ids": [
+     "2025W19_1B_0181_3/D5",
+     "2025W45_2A_0308_3/D5",
+     "2026W20_1A_1166_1/D5"
     ]
    }
   },

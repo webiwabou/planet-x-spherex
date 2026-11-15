@@ -95,6 +95,7 @@ export function SkyCanvas({ area, onInput, onClick, onContextMenu }: Props) {
         active: activeField(),
         pending,
         stretch: state.stretch,
+        selection: state.selection,
       });
       const P = projector(c, viewport);
       const overRing = L.macro > 0.5 && pointer.inside && TARGETS.some((t) => {

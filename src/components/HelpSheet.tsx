@@ -13,8 +13,12 @@ const GESTURES: [string, string][] = [
   ["Swipe on the timeline", "Scrub through time"],
   ["Double click", "Zoom in. With Shift, out"],
   ["Right click", "Actions at the cursor"],
+  ["Click the image", "Details for that spot"],
+  ["Drag the ribbon", "Choose a detector, D1 to D6"],
   ["Drag a number", "Change it. Shift ×10, Option ÷10"],
-  ["Keys", "Arrows, + −, [ ], Space, 0, 1 to 5, /"],
+  ["[ ]", "Visit before and after"],
+  [", .", "Detector below and above"],
+  ["Other keys", "Arrows, + −, Space, 0, 1 to 5, / to search"],
 ];
 
 const WHEEL_MODES: [WheelMode, string][] = [

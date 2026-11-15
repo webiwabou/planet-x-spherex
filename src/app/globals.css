@@ -150,6 +150,96 @@ html.spatial-fullscreen body {
     pointer-events: auto;
   }
 
+  .readout .status {
+    pointer-events: auto;
+    max-width: 340px;
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+    padding-top: 2px;
+  }
+  .status-detail {
+    color: var(--mute);
+    font-size: 12px;
+  }
+  .status-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .status-actions:empty {
+    display: none;
+  }
+  .status-actions button {
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 11px;
+    font: 500 13px var(--font-sans), system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .spinner {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    margin-right: 7px;
+    vertical-align: -1px;
+    border: 1.5px solid var(--line);
+    border-top-color: var(--signal);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 2;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    will-change: transform, opacity;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  .card h3 {
+    margin: 0;
+    font: italic 400 22px/1.1 var(--font-serif), Georgia, serif;
+  }
+  .card p {
+    margin: 4px 0 8px;
+    color: var(--mute);
+  }
+  .card dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 12px;
+  }
+  .card dt {
+    color: var(--mute);
+  }
+  .card dd {
+    margin: 0;
+  }
+  .card .flags {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--warn);
+    font-weight: 500;
+  }
+
   .search {
     position: absolute;
     left: 50%;
@@ -505,5 +595,8 @@ html.spatial-fullscreen body {
   .toast,
   .intro {
     transition: none;
+  }
+  .spinner {
+    animation-duration: 2.4s;
   }
 }

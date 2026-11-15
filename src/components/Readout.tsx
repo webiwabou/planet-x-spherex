@@ -21,6 +21,7 @@ import {
   viewWidthArcmin,
 } from "@/lib/viewer";
 import { ScrubNumber } from "./ScrubNumber";
+import { StatusLine } from "./StatusLine";
 
 export function Readout({ onHelp, helpOpen }: { onHelp: () => void; helpOpen: boolean }) {
   const level = useCameraValue(camera, (c) => levelOf(c.zoom));
@@ -35,7 +36,7 @@ export function Readout({ onHelp, helpOpen }: { onHelp: () => void; helpOpen: bo
         const [ra, dec] = skyAt(wx, wy);
         const f = activeField();
         const parts: string[] = [];
-        if (f) parts.push(`Detector D${f.detectorId}`);
+        if (f) parts.push(`D${f.detectorId} at ${f.wavelengthUm.toFixed(2)} µm`);
         if (f?.times.length) parts.push(formatDate(f.times[Math.round(positionAt(f.times, c.timestamp))]));
         if (where.current) where.current.textContent = `${formatRA(ra)}  ${formatDec(dec)}`;
         // The changing words come first so the draggable width stays put at the right edge
@@ -66,6 +67,7 @@ export function Readout({ onHelp, helpOpen }: { onHelp: () => void; helpOpen: bo
         />{" "}
         wide
       </div>
+      <StatusLine />
       <div className="row">
         <span>
           Stretch{" "}

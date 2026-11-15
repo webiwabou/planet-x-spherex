@@ -21,6 +21,12 @@
       "wavelength_um": 4.9628,
       "bandwidth_um": 0.0372,
       "observation_ids": ["2025W19_1B_0116_1/D6", "2026W20_1A_0033_1/D6"]
+    },
+    {
+      "detector_id": 5,
+      "wavelength_um": 4.3652,
+      "bandwidth_um": 0.038,
+      "observation_ids": ["2025W19_1B_0181_3/D5", "2025W45_2A_0308_3/D5", "2026W20_1A_1166_1/D5"]
     }
   ],
   "rw_aurigae": [

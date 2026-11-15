@@ -37,6 +37,9 @@ export type TimelineInput = {
   field: Field | null;
   detectorId: number;
   status: string | null;
+  available: readonly number[] | null;
+  pendingTicks: number;
+  pulse: number;
 };
 
 export function drawTimeline(t: TimelineInput) {
@@ -79,6 +82,17 @@ export function drawTimeline(t: TimelineInput) {
     ctx.fill();
     ctx.fillRect(px - 0.75, y - 16, 1.5, 16);
   }
+  // While a series loads, one dim tick per expected exposure pulses along the line
+  if (t.pendingTicks > 0) {
+    ctx.fillStyle = theme.mute;
+    ctx.globalAlpha = 0.35 + 0.35 * t.pulse;
+    for (let i = 0; i < t.pendingTicks; i++) {
+      const x = t.pendingTicks > 1 ? x0 + (i / (t.pendingTicks - 1)) * (x1 - x0) : x0;
+      ctx.fillRect(x - 0.5, y - 4, 1, 9);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   if (t.status) {
     ctx.fillStyle = theme.mute;
     setFont(ctx, sansFont(theme, 11, 400));
@@ -92,10 +106,12 @@ export function drawTimeline(t: TimelineInput) {
     const xa = x0 + ((d.minUm - WAVELENGTH_MIN_UM) / (WAVELENGTH_MAX_UM - WAVELENGTH_MIN_UM)) * (x1 - x0);
     const xb = x0 + ((d.maxUm - WAVELENGTH_MIN_UM) / (WAVELENGTH_MAX_UM - WAVELENGTH_MIN_UM)) * (x1 - x0);
     const on = d.id === t.detectorId;
+    ctx.globalAlpha = on || !t.available || t.available.includes(d.id) ? 1 : 0.45;
     ctx.fillStyle = on ? theme.ink : theme.line;
     ctx.fillRect(xa + 1, y2, xb - xa - 2, on ? 6 : 3);
     ctx.fillStyle = on ? theme.ink : theme.mute;
     setFont(ctx, sansFont(theme, 11, on ? 600 : 400));
     ctx.fillText(on ? `${d.label}  ${formatRange(d)}` : d.label, xa + 2, y2 + 19);
   }
+  ctx.globalAlpha = 1;
 }

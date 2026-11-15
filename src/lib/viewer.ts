@@ -10,6 +10,8 @@ import { buildField, positionAt, queryOf, repaint, timeAt } from "./series";
 import type { Field, FieldSpec } from "./series";
 import { raDecOfOffset, raDecOfWorld, worldOf } from "./sky";
 import { createStore } from "./store";
+import { TARGETS, fieldSpecOf, skyFieldSpec, targetById } from "./targets";
+import type { Target } from "./targets";
 import type { ApiErrorCode } from "./types";
 import { clampCamera, flightPlan, viewLimits } from "./view";
 import type { Levels } from "./view";
@@ -27,11 +29,15 @@ export type LoadState =
   | { status: "loading"; spec: FieldSpec; startedAt: number }
   | { status: "error"; spec: FieldSpec; code: ApiErrorCode; message: string; retryable: boolean };
 
+export type Selection = { key: string; wx: number; wy: number } | null;
+
 export type AppState = {
   apiKind: ApiKind;
   fields: Record<string, Field>;
   activeKey: string | null;
   load: LoadState;
+  selection: Selection;
+  notice: string | null;
   detectorId: number;
   playing: boolean;
   stretch: number;
@@ -47,6 +53,8 @@ export const app = createStore<AppState>({
   fields: {},
   activeKey: null,
   load: { status: "idle" },
+  selection: null,
+  notice: null,
   detectorId: 3,
   playing: false,
   stretch: 1,
@@ -248,10 +256,16 @@ export function loadField(spec: FieldSpec): Promise<Field | null> {
   if (inflight && inflight.key === spec.key && inflight.detectorId === spec.detectorId) return inflight.promise;
   inflight?.controller.abort();
   const controller = new AbortController();
-  app.set({ load: { status: "loading", spec, startedAt: Date.now() }, detectorId: spec.detectorId });
+  const previous = app.get().fields[spec.key];
+  app.set({ load: { status: "loading", spec, startedAt: Date.now() }, detectorId: spec.detectorId, notice: null });
   const promise = getApi()
     .frames(queryOf(spec), controller.signal)
     .then((series) => {
+      // A detector with no matching visits keeps the frames already on screen
+      if (previous && previous.visits.length && series.frames.length === 0) {
+        app.set({ load: { status: "idle" }, detectorId: previous.detectorId, notice: `No two visits saw one D${spec.detectorId} channel here yet. Still showing D${previous.detectorId}.` });
+        return previous;
+      }
       const field = buildField(spec, series, app.get().stretch);
       const state = app.get();
       app.set({
@@ -265,7 +279,8 @@ export function loadField(spec: FieldSpec): Promise<Field | null> {
     .catch((error: unknown) => {
       if (isAbort(error) || controller.signal.aborted) return null;
       const e = error instanceof ApiError ? error : new ApiError("unknown", String(error));
-      app.set({ load: { status: "error", spec, code: e.code, message: e.message, retryable: e.retryable } });
+      const keep = previous && previous.detectorId !== spec.detectorId ? previous.detectorId : spec.detectorId;
+      app.set({ load: { status: "error", spec, code: e.code, message: e.message, retryable: e.retryable }, detectorId: keep });
       return null;
     })
     .finally(() => {
@@ -278,6 +293,50 @@ export function loadField(spec: FieldSpec): Promise<Field | null> {
 export function retryLoad() {
   const load = app.get().load;
   if (load.status === "error") void loadField(load.spec);
+}
+
+export const dismissLoadError = () => app.set({ load: { status: "idle" }, notice: null });
+
+// Detector switching reloads the field; the old frames stay on screen until the new ones arrive
+export function selectDetector(id: number) {
+  const detectorId = Math.min(6, Math.max(1, Math.round(id)));
+  const f = activeField();
+  const load = app.get().load;
+  const current = load.status === "loading" ? load.spec : f;
+  if (!current) {
+    app.set({ detectorId });
+    return;
+  }
+  if (current.detectorId === detectorId && load.status !== "error") return;
+  const target = targetById(current.targetId);
+  const spec = (target && fieldSpecOf(target, detectorId)) ?? { ...skyFieldSpec(current.raDeg, current.decDeg, detectorId), key: current.key, label: current.label, targetId: current.targetId };
+  void loadField(spec);
+}
+
+export function visitTarget(target: Target) {
+  const spec = fieldSpecOf(target, app.get().detectorId) ?? fieldSpecOf(target);
+  if (!spec) return;
+  app.set({ selection: null });
+  void loadField(spec);
+  flyToSpec(spec);
+}
+
+export const stepDetector =(dir: 1 | -1) => selectDetector((app.get().load.status === "loading" ? app.get().detectorId : activeField()?.detectorId ?? app.get().detectorId) + dir);
+
+export const select = (selection: Selection) => app.set({ selection });
+
+export function nearestTarget(raDeg: number, decDeg: number) {
+  let best = TARGETS[0], bestDistance = Infinity;
+  for (const t of TARGETS) {
+    const r = Math.PI / 180;
+    const c = Math.sin(decDeg * r) * Math.sin(t.decDeg * r) + Math.cos(decDeg * r) * Math.cos(t.decDeg * r) * Math.cos((raDeg - t.raDeg) * r);
+    const d = Math.acos(Math.min(1, Math.max(-1, c)));
+    if (d < bestDistance) {
+      bestDistance = d;
+      best = t;
+    }
+  }
+  return best;
 }
 
 const inReach = (f: { wx: number; wy: number; sizeArcsec: number }, c: Camera) =>

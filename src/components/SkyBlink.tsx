@@ -24,11 +24,14 @@ import {
   markTouched,
   motion,
   reduceMotion,
+  select,
   skyAt,
+  stepDetector,
   stepVisit,
   toast,
   togglePlay,
   viewport,
+  visitTarget,
 } from "@/lib/viewer";
 import { HelpSheet } from "./HelpSheet";
 import { PlayButton } from "./PlayButton";
@@ -37,17 +40,11 @@ import type { RadialItem, RadialState } from "./RadialMenu";
 import { Readout } from "./Readout";
 import { SearchField } from "./SearchField";
 import { SkyCanvas } from "./SkyCanvas";
+import { SourceCard } from "./SourceCard";
 import { Timeline } from "./Timeline";
 
 const INTRO = "Pick a spot in the sky, watch it blink, and spot what moves. Each frame is a real SPHEREx infrared image of the same patch, taken months apart.";
 const HINT = "Pinch or scroll to dive in. Click a ring to fly there.";
-
-function visitTarget(target: Target) {
-  const spec = fieldSpecOf(target, app.get().detectorId) ?? fieldSpecOf(target);
-  if (!spec) return;
-  void loadField(spec);
-  flyToSpec(spec);
-}
 
 // A typed position inside a target's field uses that target's curated series
 function visitPosition(raDeg: number, decDeg: number) {
@@ -55,6 +52,7 @@ function visitPosition(raDeg: number, decDeg: number) {
   const detectorId = app.get().detectorId;
   const spec = target ? fieldSpecOf(target, detectorId) ?? fieldSpecOf(target) : skyFieldSpec(raDeg, decDeg, detectorId);
   if (!spec) return;
+  select(null);
   void loadField(spec);
   const [x, y] = worldAt(raDeg, decDeg, target ? spec : null);
   const { zoom } = fieldCamera({ wx: x, wy: y, sizeArcsec: spec.fovArcmin * 60 });
@@ -220,6 +218,7 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
       const k = e.key;
       if (k === "Escape") {
         closeFloating();
+        select(null);
         return;
       }
       if (k === "ContextMenu" || (k === "F10" && e.shiftKey)) {
@@ -266,6 +265,8 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
       else if (k === "[" || k === "]") {
         markTouched();
         stepVisit(k === "]" ? 1 : -1);
+      } else if (k === "," || k === ".") {
+        stepDetector(k === "." ? 1 : -1);
       } else if (k === " ") {
         markTouched();
         togglePlay();
@@ -284,16 +285,23 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [closeFloating, openRadial]);
 
-  // At the whole-sky level a click on a landmark ring flies there
+  // At the whole-sky level a click on a landmark ring flies there; closer in it selects a point on a field
   const onClick = useCallback((sx: number, sy: number) => {
-    if (levelsOf(camera.get().zoom).macro <= 0.5) return;
-    const ring = ringAt(sx, sy);
-    if (ring) visitTarget(ring);
+    const c = camera.get();
+    if (levelsOf(c.zoom).macro > 0.5) {
+      const ring = ringAt(sx, sy);
+      if (ring) visitTarget(ring);
+      return;
+    }
+    const [wx, wy] = unproject(c, viewport, sx, sy);
+    const hit = Object.values(app.get().fields).find((f) => Math.abs(wx - f.wx) <= f.sizeArcsec / 2 && Math.abs(wy - f.wy) <= f.sizeArcsec / 2);
+    select(hit ? { key: hit.key, wx, wy } : null);
   }, []);
 
   return (
     <div ref={stage} className="sky-blink">
       <SkyCanvas area={stage} onInput={closeFloating} onClick={onClick} onContextMenu={openRadial} />
+      <SourceCard />
       {!embed && (
         <div className="brand">
           <h1>SPHEREx Sky Blink</h1>

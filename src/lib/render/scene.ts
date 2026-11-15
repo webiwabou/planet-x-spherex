@@ -23,6 +23,7 @@ export type SceneInput = {
   active: Field | null;
   pending: PendingField | null;
   stretch: number;
+  selection: { wx: number; wy: number } | null;
 };
 
 const ARCSEC_PER_DEG = 3600;
@@ -355,6 +356,14 @@ export function drawScene(s: SceneInput) {
   for (const f of s.fields) drawField(s, P, f, stack);
   drawLandmarks(s, P, stack);
   if (s.active && L.micro > 0.02 && !stack) drawPixels(s, P, s.active);
+  if (s.selection && L.macro < 0.5) {
+    const [x, y] = P(s.selection.wx, s.selection.wy);
+    ctx.strokeStyle = theme.ink;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(x, y, 13, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   const near = 1 - L.macro;
   if (near > 0.3) drawScale(s, near);
 }

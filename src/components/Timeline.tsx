@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { drawTimeline, pixelsPerVisit, timelineU, TIMELINE } from "@/lib/render/timeline";
+import { detectorUnder, drawTimeline, pixelsPerVisit, timelineU, TIMELINE } from "@/lib/render/timeline";
 import { forgetFont, readTheme } from "@/lib/render/theme";
 import { positionAt } from "@/lib/series";
 import { formatDate } from "@/lib/sky";
-import { activeField, app, camera, scrubByPixels, scrubToPosition, snapTime, stepVisit } from "@/lib/viewer";
+import { detectorsOf, targetById } from "@/lib/targets";
+import { activeField, app, camera, scrubByPixels, scrubToPosition, selectDetector, snapTime, stepDetector, stepVisit } from "@/lib/viewer";
+
+const BROWN_DWARFS = new Set(["wise_0855", "epsilon_indi_b"]);
+const RIBBON_TOP = 50;
 
 export function timelineStatus(): string | null {
   const { load } = app.get();
@@ -27,7 +31,7 @@ export function Timeline({ onInput }: { onInput: () => void }) {
     let theme = readTheme();
     let dpr = 1, width = 1, dirty = true, frame = 0;
     let height: number = TIMELINE.height;
-    let dragging: number | null = null;
+    let drag: { id: number; mode: "time" | "band" } | null = null;
 
     const resize = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -47,23 +51,43 @@ export function Timeline({ onInput }: { onInput: () => void }) {
       dirty = true;
     });
 
-    const tick = () => {
-      if (dirty) {
+    const tick = (now: number) => {
+      const { load, detectorId } = app.get();
+      const loading = load.status === "loading";
+      if (dirty || loading) {
         dirty = false;
         const c = camera.get();
         const field = activeField();
-        drawTimeline({ ctx, dpr, width, height, theme, c, field, detectorId: field?.detectorId ?? app.get().detectorId, status: timelineStatus() });
+        const showing = loading ? load.spec : field;
+        const target = targetById(showing?.targetId);
+        drawTimeline({
+          ctx,
+          dpr,
+          width,
+          height,
+          theme,
+          c,
+          field: loading && field?.key !== load.spec.key ? null : field,
+          detectorId,
+          status: timelineStatus(),
+          available: target ? detectorsOf(target) : null,
+          pendingTicks: loading && (!field || field.key !== load.spec.key) ? load.spec.observationIds?.length ?? 0 : 0,
+          pulse: 0.5 + 0.5 * Math.sin(now / 260),
+        });
         const n = field?.visits.length ?? 0;
         const u = field ? positionAt(field.times, c.timestamp) : 0;
         canvas.setAttribute("aria-valuemax", String(Math.max(0, n - 1)));
         canvas.setAttribute("aria-valuenow", u.toFixed(2));
-        canvas.setAttribute("aria-valuetext", field && n ? `${formatDate(field.times[Math.round(u)])}, visit ${Math.round(u) + 1} of ${n}` : "No visits loaded");
+        canvas.setAttribute("aria-valuetext", field && n ? `${formatDate(field.times[Math.round(u)])}, visit ${Math.round(u) + 1} of ${n}, detector D${field.detectorId}` : "No visits loaded");
       }
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
 
-    const local = (e: PointerEvent | WheelEvent) => e.clientX - canvas.getBoundingClientRect().left;
+    const local = (e: PointerEvent | WheelEvent) => {
+      const r = canvas.getBoundingClientRect();
+      return [e.clientX - r.left, e.clientY - r.top] as const;
+    };
     const scrubTo = (x: number) => {
       const f = activeField();
       if (f) scrubToPosition(timelineU(width, f.visits.length, x));
@@ -72,16 +96,28 @@ export function Timeline({ onInput }: { onInput: () => void }) {
       if (e.button !== 0) return;
       input.current();
       canvas.setPointerCapture(e.pointerId);
-      dragging = e.pointerId;
-      scrubTo(local(e));
+      const [x, y] = local(e);
+      drag = { id: e.pointerId, mode: y > RIBBON_TOP ? "band" : "time" };
+      if (drag.mode === "time") scrubTo(x);
+      else app.set({ detectorId: detectorUnder(width, x).id });
     };
     const onPointerMove = (e: PointerEvent) => {
-      if (dragging === e.pointerId) scrubTo(local(e));
+      const [x, y] = local(e);
+      const target = targetById(activeField()?.targetId);
+      canvas.title = y > RIBBON_TOP ? (target && BROWN_DWARFS.has(target.id) ? "Cold brown dwarfs are brightest in D5 and D6" : "Drag along the wavelength ribbon to choose a detector") : "";
+      if (!drag || drag.id !== e.pointerId) return;
+      if (drag.mode === "time") scrubTo(x);
+      else {
+        const id = detectorUnder(width, x).id;
+        if (id !== app.get().detectorId) app.set({ detectorId: id });
+      }
     };
     const onPointerUp = (e: PointerEvent) => {
-      if (dragging !== e.pointerId) return;
-      dragging = null;
-      snapTime();
+      if (!drag || drag.id !== e.pointerId) return;
+      const mode = drag.mode;
+      drag = null;
+      if (mode === "time") snapTime();
+      else selectDetector(app.get().detectorId);
     };
     // A horizontal swipe here scrubs instead of panning the sky
     const onWheel = (e: WheelEvent) => {
@@ -97,6 +133,10 @@ export function Timeline({ onInput }: { onInput: () => void }) {
         e.preventDefault();
         e.stopPropagation();
         stepVisit(e.key === "ArrowRight" ? 1 : -1);
+      } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        e.stopPropagation();
+        stepDetector(e.key === "ArrowUp" ? 1 : -1);
       }
     };
 
@@ -121,5 +161,14 @@ export function Timeline({ onInput }: { onInput: () => void }) {
     };
   }, []);
 
-  return <canvas ref={ref} className="timeline" role="slider" tabIndex={0} aria-label="Time" aria-valuemin={0} />;
+  return (
+    <canvas
+      ref={ref}
+      className="timeline"
+      role="slider"
+      tabIndex={0}
+      aria-label="Time. Left and right arrows step through the visits, up and down change the detector."
+      aria-valuemin={0}
+    />
+  );
 }
