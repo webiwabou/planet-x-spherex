@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from models import ExtractedSpectrumResponse, SkyCoordinateInput, DifferenceImageResult
 from catalogue_routes import router as catalogue_router
+from spherex_routes import router as spherex_router
 from pipeline import parse_sky_coordinates, compute_102_band_spectrum
 
 app = FastAPI(
@@ -55,3 +56,4 @@ def extract_spectrum(
 
 
 app.include_router(catalogue_router)
+app.include_router(spherex_router)

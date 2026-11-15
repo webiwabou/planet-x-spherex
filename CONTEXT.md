@@ -1,5 +1,12 @@
 # Contexto para continuar en Windows — Planet-X / SPHEREx
 
+## Avance verificado en Windows
+
+- `origin/main` se recibió en `cd05f16`. El remoto del equipo quedó configurado como `upstream` y su rama principal se verificó en `8273e06`.
+- Se usó Python 3.11.9 en `.venv`, con Astropy 8.0.2. Se repitieron las cinco consultas Gaia. Los archivos de trabajo locales se guardan en `.cache`.
+- El [contrato SPHEREx](docs/SPHEREX_API.md) documenta búsqueda, recortes y metadatos implementados y el diseño propuesto de frames. [Las pruebas reales](docs/SPHEREX_VALIDATION.md) incluyen ambas colecciones Wide y recortes de los cinco campos. Barnard se consultó con el centro propagado obtenido en la [revisión M4-03](docs/MEMBER4_API.md#m4-03-comprobación-de-centros-para-objetivos-rápidos).
+- La siguiente dependencia es M2. Usar los FITS reales para validar la lectura de arrays, la reproyección espacial, las máscaras, la compatibilidad espectral y la escala común. Quedan pendientes el endpoint de frames, la integración del visor, el despliegue y la entrega. El [tracker local](docs/NOTION_TASK_TRACKER.md) distingue avances comprobados y pendientes.
+
 Actualizado: 2026-11-15. Leer este archivo primero y después [el seguimiento de tareas de Notion](docs/NOTION_TASK_TRACKER.md). Este documento transfiere el contexto del agente de Linux al agente de Windows; el cambio de equipo no reinicia el proyecto.
 
 ## Instrucciones vigentes del usuario

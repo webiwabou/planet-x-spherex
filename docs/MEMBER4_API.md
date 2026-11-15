@@ -2,6 +2,8 @@
 
 Implementación independiente de los subsistemas de descarga y procesamiento SPHEREx. Contrato implementado en este fork; pendiente de acuerdo e integración con el equipo.
 
+El [contrato SPHEREx propuesto](SPHEREX_API.md) define la entrega de observaciones, FITS, frames y WCS entre miembros.
+
 ## Ver el avance
 
 Desde la raíz del repositorio:
@@ -142,6 +144,28 @@ Las pruebas automáticas usan un transporte HTTP controlado y verifican precisi�
 `resources/gaia/targets.json` conserva la procedencia y las coordenadas obtenidas por CDS/SIMBAD; `target_resolution.json` conserva los valores de la respuesta del resolvedor. La respuesta no aporta época astrométrica, por lo que se usan como **centros de búsqueda**, no como efemérides. WISE 0855 usa las coordenadas explícitas del enunciado; se conserva también la discrepancia con la posición resuelta por CDS.
 
 Los presets heredados de `.agents/.../canonical_targets.json` contienen centros diferentes para Epsilon Indi B, RW Aurigae y R Draconis. Este módulo usa sus propios centros verificados. El equipo debe actualizar o sustituir los presets compartidos al integrar el frontend; no trasladar sus movimientos propios sin comprobar procedencia y época.
+
+### M4-03: comprobación de centros para objetivos rápidos
+
+Se consultaron por identificador las siguientes filas en el [TAP de ESA](https://gea.esac.esa.int/archive/) y se aplicó `propagate` a 2026-11-14T00:00:00 UTC como fecha de comprobación. Se preserva `ref_epoch = 2016.0` TCB, con `pmra` definido como μᵅ cos δ. Los resultados son posiciones de movimiento angular para planificar el campo. La pertenencia a cada frame se comprueba después con su fecha y su WCS.
+
+| Objetivo | Gaia DR3 `source_id` | RA/Dec propagadas (°) | Desplazamiento con respecto al centro guardado (′, este/norte) | Campo norte arriba de 8′ |
+| --- | --- | --- | --- | --- |
+| Barnard’s Star | `4472832130942575872` | 269.44607434, +4.77070268 | −0.359, +4.640 | Fuera por el norte |
+| Epsilon Indi B | `6412596012146801152` | 331.09840703, −56.80125716 | +1.783, −1.105 | Dentro del cuadrado nominal |
+
+Consulta ADQL reproducible:
+
+```sql
+SELECT source_id, ra, dec, ref_epoch, pmra, pmdec, parallax
+FROM gaiadr3.gaia_source
+WHERE source_id IN (4472832130942575872, 6412596012146801152)
+```
+
+- Barnard requiere recentrar la región para una ventana de 8′ en esa fecha.
+- La solución Gaia de Epsilon Indi B se usa como referencia de apuntado del sistema. Para las componentes Ba/Bb, consultar la [astrometría orbital resuelta](https://arxiv.org/abs/2205.08077).
+- Para WISE 0855, la [astrometría multiepoch publicada](https://doi.org/10.3847/0004-6256/152/3/78) ofrece posiciones fechadas y un ajuste de movimiento y paralaje. Falta incorporar una posición de referencia del ajuste con su fecha y comprobar la proyección. El centro del enunciado sigue siendo un centro de búsqueda.
+- RW Aurigae y R Draconis conservan sus centros de búsqueda CDS. Queda verificar la contraparte que se quiera seguir, su posición a la época de la observación y su cobertura en el FITS real.
 
 ## Límites científicos y tareas en espera
 
