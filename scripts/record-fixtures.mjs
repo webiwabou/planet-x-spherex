@@ -10,7 +10,8 @@ const base = (args.find((a) => a.startsWith("--base="))?.slice(7) ?? process.env
 const only = new Set(args.filter((a) => !a.startsWith("--")));
 const out = path.join(root, "public/fixtures");
 
-async function fetchJson(url, init, attempts = 4) {
+// IRSA's search service drops requests now and then, so archive errors are retried with a growing pause
+async function fetchJson(url, init, attempts = 8) {
   for (let attempt = 1; ; attempt++) {
     const response = await fetch(url, init);
     const body = await response.json().catch(() => null);
@@ -18,7 +19,7 @@ async function fetchJson(url, init, attempts = 4) {
     const code = body?.detail?.code ?? `HTTP ${response.status}`;
     if (attempt >= attempts || ![502, 503, 504].includes(response.status)) throw new Error(`${url} failed: ${code} ${body?.detail?.message ?? ""}`);
     console.log(`  ${code}, retrying (${attempt}/${attempts - 1})`);
-    await new Promise((resolve) => setTimeout(resolve, 4000 * attempt));
+    await new Promise((resolve) => setTimeout(resolve, 5000 * attempt));
   }
 }
 

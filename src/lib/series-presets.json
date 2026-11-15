@@ -4,7 +4,22 @@
       "detector_id": 3,
       "wavelength_um": 2.149,
       "bandwidth_um": 0.0542,
-      "observation_ids": ["2025W35_1A_0008_4/D3", "2026W12_2A_0520_1/D3", "2026W19_1A_0216_1/D3"]
+      "observation_ids": [
+        "2025W35_1A_0008_4/D3",
+        "2026W12_2A_0520_1/D3",
+        "2026W19_1A_0216_1/D3"
+      ]
+    },
+    {
+      "detector_id": 2,
+      "wavelength_um": 1.5128,
+      "bandwidth_um": 0.0371,
+      "observation_ids": [
+        "2025W35_1A_0146_1/D2",
+        "2026W11_2A_0501_3/D2",
+        "2026W34_1A_0363_1/D2",
+        "2026W39_1A_0371_1/D2"
+      ]
     }
   ],
   "epsilon_indi_b": [
@@ -12,7 +27,26 @@
       "detector_id": 2,
       "wavelength_um": 1.213,
       "bandwidth_um": 0.0293,
-      "observation_ids": ["2025W17_4B_0222_3/D2", "2025W23_2B_0258_2/D2", "2025W41_1A_0081_1/D2", "2026W40_1A_0613_1/D2"]
+      "observation_ids": [
+        "2025W17_4B_0222_3/D2",
+        "2025W23_2B_0258_2/D2",
+        "2025W41_1A_0081_1/D2",
+        "2026W40_1A_0613_1/D2"
+      ]
+    },
+    {
+      "detector_id": 6,
+      "wavelength_um": 4.4913,
+      "bandwidth_um": 0.0356,
+      "observation_ids": [
+        "2025W18_1B_0081_4/D6",
+        "2025W18_2B_0011_4/D6",
+        "2025W19_1B_0344_4/D6",
+        "2025W40_1A_0473_1/D6",
+        "2026W39_1A_0276_1/D6",
+        "2026W39_2A_0647_1/D6",
+        "2026W39_2A_0682_1/D6"
+      ]
     }
   ],
   "wise_0855": [
@@ -20,13 +54,20 @@
       "detector_id": 6,
       "wavelength_um": 4.9628,
       "bandwidth_um": 0.0372,
-      "observation_ids": ["2025W19_1B_0116_1/D6", "2026W20_1A_0033_1/D6"]
+      "observation_ids": [
+        "2025W19_1B_0116_1/D6",
+        "2026W20_1A_0033_1/D6"
+      ]
     },
     {
       "detector_id": 5,
       "wavelength_um": 4.3652,
       "bandwidth_um": 0.038,
-      "observation_ids": ["2025W19_1B_0181_3/D5", "2025W45_2A_0308_3/D5", "2026W20_1A_1166_1/D5"]
+      "observation_ids": [
+        "2025W19_1B_0181_3/D5",
+        "2025W45_2A_0308_3/D5",
+        "2026W20_1A_1166_1/D5"
+      ]
     }
   ],
   "rw_aurigae": [
@@ -34,7 +75,20 @@
       "detector_id": 1,
       "wavelength_um": 0.9713,
       "bandwidth_um": 0.0253,
-      "observation_ids": ["2025W36_1A_0663_1/D1", "2026W37_1A_0524_1/D1"]
+      "observation_ids": [
+        "2025W36_1A_0663_1/D1",
+        "2026W37_1A_0524_1/D1"
+      ]
+    },
+    {
+      "detector_id": 3,
+      "wavelength_um": 1.9298,
+      "bandwidth_um": 0.047,
+      "observation_ids": [
+        "2026W08_2A_0233_1/D3",
+        "2026W10_1A_0120_1/D3",
+        "2026W38_1A_0359_4/D3"
+      ]
     }
   ],
   "r_draconis": [
@@ -42,7 +96,26 @@
       "detector_id": 3,
       "wavelength_um": 1.9886,
       "bandwidth_um": 0.0488,
-      "observation_ids": ["2025W23_2B_0382_1/D3", "2025W24_2D_0074_1/D3", "2026W01_1A_0257_3/D3", "2026W17_1B_0434_3/D3", "2026W19_2A_1339_2/D3"]
+      "observation_ids": [
+        "2025W23_2B_0382_1/D3",
+        "2025W24_2D_0074_1/D3",
+        "2026W01_1A_0257_3/D3",
+        "2026W17_1B_0434_3/D3",
+        "2026W19_2A_1339_2/D3"
+      ]
+    },
+    {
+      "detector_id": 1,
+      "wavelength_um": 0.9624,
+      "bandwidth_um": 0.0249,
+      "observation_ids": [
+        "2025W23_2B_0206_2/D1",
+        "2025W28_1B_0100_1/D1",
+        "2025W42_2A_0526_3/D1",
+        "2026W28_1A_0671_2/D1",
+        "2026W28_2A_0106_2/D1",
+        "2026W29_1A_0364_1/D1"
+      ]
     }
   ]
 }

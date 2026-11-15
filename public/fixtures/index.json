@@ -1,8 +1,26 @@
 {
- "recorded_at": "2026-11-15T08:16:28.265Z",
+ "recorded_at": "2026-11-15T08:44:27.188Z",
  "source": "POST /api/spherex/frames from astro_engine, SPHEREx DR1 and QR3 at IRSA",
  "targets_file": "targets.json",
  "series": [
+  {
+   "target_id": "barnards_star",
+   "file": "frames/barnards_star_d2.json",
+   "query": {
+    "ra": "269.4485025",
+    "dec": "4.7669315",
+    "fov_arcmin": 8,
+    "detector_id": 2,
+    "wavelength_um": 1.5128,
+    "bandwidth_um": 0.0371,
+    "observation_ids": [
+     "2025W35_1A_0146_1/D2",
+     "2026W11_2A_0501_3/D2",
+     "2026W34_1A_0363_1/D2",
+     "2026W39_1A_0371_1/D2"
+    ]
+   }
+  },
   {
    "target_id": "barnards_star",
    "file": "frames/barnards_star_d3.json",
@@ -39,6 +57,47 @@
    }
   },
   {
+   "target_id": "epsilon_indi_b",
+   "file": "frames/epsilon_indi_b_d6.json",
+   "query": {
+    "ra": "331.04414658852124",
+    "dec": "-56.78284419511611",
+    "fov_arcmin": 8,
+    "detector_id": 6,
+    "wavelength_um": 4.4913,
+    "bandwidth_um": 0.0356,
+    "observation_ids": [
+     "2025W18_1B_0081_4/D6",
+     "2025W18_2B_0011_4/D6",
+     "2025W19_1B_0344_4/D6",
+     "2025W40_1A_0473_1/D6",
+     "2026W39_1A_0276_1/D6",
+     "2026W39_2A_0647_1/D6",
+     "2026W39_2A_0682_1/D6"
+    ]
+   }
+  },
+  {
+   "target_id": "r_draconis",
+   "file": "frames/r_draconis_d1.json",
+   "query": {
+    "ra": "248.16761083295",
+    "dec": "66.75497941722",
+    "fov_arcmin": 8,
+    "detector_id": 1,
+    "wavelength_um": 0.9624,
+    "bandwidth_um": 0.0249,
+    "observation_ids": [
+     "2025W23_2B_0206_2/D1",
+     "2025W28_1B_0100_1/D1",
+     "2025W42_2A_0526_3/D1",
+     "2026W28_1A_0671_2/D1",
+     "2026W28_2A_0106_2/D1",
+     "2026W29_1A_0364_1/D1"
+    ]
+   }
+  },
+  {
    "target_id": "r_draconis",
    "file": "frames/r_draconis_d3.json",
    "query": {
@@ -70,6 +129,23 @@
     "observation_ids": [
      "2025W36_1A_0663_1/D1",
      "2026W37_1A_0524_1/D1"
+    ]
+   }
+  },
+  {
+   "target_id": "rw_aurigae",
+   "file": "frames/rw_aurigae_d3.json",
+   "query": {
+    "ra": "76.95652603458",
+    "dec": "30.40143817389",
+    "fov_arcmin": 8,
+    "detector_id": 3,
+    "wavelength_um": 1.9298,
+    "bandwidth_um": 0.047,
+    "observation_ids": [
+     "2026W08_2A_0233_1/D3",
+     "2026W10_1A_0120_1/D3",
+     "2026W38_1A_0359_4/D3"
     ]
    }
   },
