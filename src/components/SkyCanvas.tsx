@@ -2,8 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import { attachGestures } from "@/lib/gestures";
-import { drawScene } from "@/lib/render/scene";
+import { drawScene, projector } from "@/lib/render/scene";
 import { forgetFont, readTheme } from "@/lib/render/theme";
+import { worldOf } from "@/lib/sky";
+import { TARGETS } from "@/lib/targets";
 import { clampCamera, levelsOf, zoomView } from "@/lib/view";
 import {
   activeField,
@@ -16,9 +18,11 @@ import {
   motion,
   nearestFieldKey,
   onFrameRequest,
+  pointer,
   reduceMotion,
   scrubByPixels,
   setPointer,
+  snapTime,
   tickPlay,
   viewport,
 } from "@/lib/viewer";
@@ -74,7 +78,10 @@ export function SkyCanvas({ area, onInput, onClick, onContextMenu }: Props) {
       const state = app.get();
       if (L.macro < 0.5) {
         const key = nearestFieldKey(c);
-        if (key && key !== state.activeKey) app.set({ activeKey: key });
+        if (key && key !== state.activeKey) {
+          app.set({ activeKey: key });
+          snapTime();
+        }
       }
       const pending = state.load.status === "loading" && !state.fields[state.load.spec.key] ? state.load.spec : null;
       drawScene({
@@ -89,6 +96,12 @@ export function SkyCanvas({ area, onInput, onClick, onContextMenu }: Props) {
         pending,
         stretch: state.stretch,
       });
+      const P = projector(c, viewport);
+      const overRing = L.macro > 0.5 && pointer.inside && TARGETS.some((t) => {
+        const [x, y] = P(...worldOf(t.raDeg, t.decDeg));
+        return Math.hypot(x - pointer.x, y - pointer.y) < 18;
+      });
+      if (canvas.dataset.point !== String(overRing)) canvas.dataset.point = String(overRing);
       emitFrame(c, L);
     };
 

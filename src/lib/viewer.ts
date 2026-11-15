@@ -242,6 +242,7 @@ export function loadField(spec: FieldSpec): Promise<Field | null> {
         activeKey: state.activeKey ?? spec.key,
         load: { status: "idle" },
       });
+      if (app.get().activeKey === spec.key) snapTime();
       return field;
     })
     .catch((error: unknown) => {

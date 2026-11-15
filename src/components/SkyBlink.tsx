@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { projector } from "@/lib/render/scene";
-import { worldOf } from "@/lib/sky";
+import { formatDec, formatRA, worldOf } from "@/lib/sky";
 import { useStoreValue } from "@/lib/store";
 import { TARGETS, fieldSpecOf, targetByKey } from "@/lib/targets";
 import type { Target } from "@/lib/targets";
-import { levelsOf, panView, zoomView } from "@/lib/view";
+import { levelsOf, panView, unproject, zoomView } from "@/lib/view";
 import {
+  activeField,
   app,
   camera,
   dom,
@@ -21,12 +22,16 @@ import {
   markTouched,
   motion,
   reduceMotion,
+  skyAt,
   stepVisit,
+  toast,
   togglePlay,
   viewport,
 } from "@/lib/viewer";
 import { HelpSheet } from "./HelpSheet";
 import { PlayButton } from "./PlayButton";
+import { RadialMenu, radialCentre } from "./RadialMenu";
+import type { RadialItem, RadialState } from "./RadialMenu";
 import { Readout } from "./Readout";
 import { SkyCanvas } from "./SkyCanvas";
 import { Timeline } from "./Timeline";
@@ -41,14 +46,32 @@ function visitTarget(target: Target) {
   flyToSpec(spec);
 }
 
+function ringAt(sx: number, sy: number): Target | null {
+  const P = projector(camera.get(), viewport);
+  return TARGETS.find((t) => {
+    const [x, y] = P(...worldOf(t.raDeg, t.decDeg));
+    return Math.hypot(x - sx, y - sy) < 18;
+  }) ?? null;
+}
+
+function copyText(text: string) {
+  const done = () => toast(`Copied ${text}`);
+  try {
+    navigator.clipboard.writeText(text).then(done, () => toast(text));
+  } catch {
+    toast(text);
+  }
+}
+
 const isTyping = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
 
 export function SkyBlink({ embed = false }: { embed?: boolean }) {
   const stage = useRef<HTMLDivElement>(null);
   const touched = useStoreValue(app, (s) => s.touched);
-  const toast = useStoreValue(app, (s) => s.toast);
+  const toastState = useStoreValue(app, (s) => s.toast);
   const [help, setHelp] = useState(false);
+  const [radial, setRadial] = useState<RadialState>(null);
   const [introGone, setIntroGone] = useState(false);
   const [toastOn, setToastOn] = useState(false);
 
@@ -64,11 +87,11 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
   }, [touched]);
 
   useEffect(() => {
-    if (!toast) return;
+    if (!toastState) return;
     setToastOn(true);
     const timer = setTimeout(() => setToastOn(false), 2400);
     return () => clearTimeout(timer);
-  }, [toast]);
+  }, [toastState]);
 
   useEffect(() => {
     dom.stage = stage.current;
@@ -88,7 +111,47 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
     return () => clearTimeout(timer);
   }, []);
 
-  const closeFloating = useCallback(() => setHelp(false), []);
+  const closeRadial = useCallback(() => setRadial(null), []);
+  const closeFloating = useCallback(() => {
+    setHelp(false);
+    setRadial(null);
+  }, []);
+
+  const actionsAt = useCallback((sx: number, sy: number): RadialItem[] => {
+    const c = camera.get();
+    const L = levelsOf(c.zoom);
+    const [ra, dec] = skyAt(...unproject(c, viewport, sx, sy));
+    const coords = `${formatRA(ra)} ${formatDec(dec)}`;
+    const f = activeField();
+    const many = !!f && f.visits.length > 1;
+    const items: RadialItem[] = [];
+    if (many) {
+      items.push({ label: app.get().playing ? "Pause the blink" : "Play the blink", run: togglePlay });
+      items.push({ label: "Next visit", run: () => stepVisit(1) });
+      items.push({ label: "Visit before", run: () => stepVisit(-1) });
+    }
+    items.push({ label: "Copy coordinates", run: () => copyText(coords) });
+    if (L.macro < 0.6) {
+      const flat = c.pitch > 0.3;
+      items.push({ label: flat ? "Lay the plate flat" : "Stand the plate up", run: () => flyTo({ pitch: flat ? 0 : 0.95, bearing: flat ? 0 : -0.35 }, 700) });
+      items.push({ label: "Back to whole sky", run: () => flyTo(homeCamera()) });
+    } else {
+      const ring = ringAt(sx, sy);
+      if (ring) items.push({ label: `Fly to ${ring.name}`, run: () => visitTarget(ring) });
+    }
+    items.push({ label: "Gestures", run: () => setHelp(true) });
+    return items.slice(0, 8);
+  }, []);
+
+  const openRadial = useCallback(
+    (sx: number, sy: number, viaKeyboard = false) => {
+      const items = actionsAt(sx, sy);
+      const [x, y] = radialCentre(sx, sy);
+      setHelp(false);
+      setRadial({ x, y, items, viaKeyboard });
+    },
+    [actionsAt],
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -98,17 +161,23 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
         closeFloating();
         return;
       }
-      const t = e.target;
-      const onSky = t === document.body || t === document.documentElement || (t instanceof HTMLElement && (t.classList.contains("stage") || t.classList.contains("timeline")));
+      if (k === "ContextMenu" || (k === "F10" && e.shiftKey)) {
+        e.preventDefault();
+        openRadial(viewport.width / 2, viewport.height / 2, true);
+        return;
+      }
       if (k === "?") {
         setHelp((h) => !h);
         e.preventDefault();
         return;
       }
+      const t = e.target;
+      const onSky = t === document.body || t === document.documentElement || (t instanceof HTMLElement && (t.classList.contains("stage") || t.classList.contains("timeline")));
       if (!onSky) return;
       const input = () => {
         motion.stop();
         markTouched();
+        closeFloating();
       };
       const pan = (dx: number, dy: number) => {
         input();
@@ -145,25 +214,18 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [closeFloating]);
+  }, [closeFloating, openRadial]);
 
   // At the whole-sky level a click on a landmark ring flies there
   const onClick = useCallback((sx: number, sy: number) => {
-    const c = camera.get();
-    if (levelsOf(c.zoom).macro <= 0.5) return;
-    const P = projector(c, viewport);
-    for (const target of TARGETS) {
-      const [x, y] = P(...worldOf(target.raDeg, target.decDeg));
-      if (Math.hypot(x - sx, y - sy) < 18) {
-        visitTarget(target);
-        return;
-      }
-    }
+    if (levelsOf(camera.get().zoom).macro <= 0.5) return;
+    const ring = ringAt(sx, sy);
+    if (ring) visitTarget(ring);
   }, []);
 
   return (
     <div ref={stage} className="sky-blink">
-      <SkyCanvas area={stage} onInput={closeFloating} onClick={onClick} />
+      <SkyCanvas area={stage} onInput={closeFloating} onClick={onClick} onContextMenu={openRadial} />
       {!embed && (
         <div className="brand">
           <h1>SPHEREx Sky Blink</h1>
@@ -174,8 +236,9 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
       )}
       <Readout onHelp={() => setHelp((h) => !h)} helpOpen={help} />
       <HelpSheet open={help} />
+      <RadialMenu state={radial} onClose={closeRadial} />
       <div className="toast" role="status" data-on={toastOn}>
-        {toast?.text}
+        {toastState?.text}
       </div>
       {!embed && (
         <div className="hint" data-gone={introGone}>
@@ -183,10 +246,19 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
         </div>
       )}
       <PlayButton />
-      <Timeline onInput={() => {
-        markTouched();
-        closeFloating();
-      }} />
+      <button type="button" className="menu-btn" aria-label="Actions" aria-haspopup="menu" onClick={() => openRadial(viewport.width / 2, viewport.height / 2, true)}>
+        <svg viewBox="0 0 14 14" aria-hidden="true">
+          <circle cx="2.5" cy="7" r="1.5" />
+          <circle cx="7" cy="7" r="1.5" />
+          <circle cx="11.5" cy="7" r="1.5" />
+        </svg>
+      </button>
+      <Timeline
+        onInput={() => {
+          markTouched();
+          closeFloating();
+        }}
+      />
     </div>
   );
 }
