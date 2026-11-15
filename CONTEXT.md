@@ -4,8 +4,9 @@
 
 - `origin/main` se recibió en `cd05f16`. El remoto del equipo quedó configurado como `upstream` y su rama principal se verificó en `8273e06`.
 - Se usó Python 3.11.9 en `.venv`, con Astropy 8.0.2. Se repitieron las cinco consultas Gaia. Los archivos de trabajo locales se guardan en `.cache`.
-- El [contrato SPHEREx](docs/SPHEREX_API.md) documenta búsqueda, recortes y metadatos implementados y el diseño propuesto de frames. [Las pruebas reales](docs/SPHEREX_VALIDATION.md) incluyen ambas colecciones Wide y recortes de los cinco campos. Barnard se consultó con el centro propagado obtenido en la [revisión M4-03](docs/MEMBER4_API.md#m4-03-comprobación-de-centros-para-objetivos-rápidos).
-- La siguiente dependencia es M2. Usar los FITS reales para validar la lectura de arrays, la reproyección espacial, las máscaras, la compatibilidad espectral y la escala común. Quedan pendientes el endpoint de frames, la integración del visor, el despliegue y la entrega. El [tracker local](docs/NOTION_TASK_TRACKER.md) distingue avances comprobados y pendientes.
+- El [contrato SPHEREx](docs/SPHEREX_API.md) documenta búsqueda, recortes, metadatos y la serie preliminar con IDs explícitos. [Las pruebas reales](docs/SPHEREX_VALIDATION.md) incluyen ambas colecciones Wide y recortes de los cinco campos. Barnard se consultó con el centro propagado obtenido en la [revisión M4-03](docs/MEMBER4_API.md#m4-03-comprobación-de-centros-para-objetivos-rápidos).
+- Tras iniciar Uvicorn, la [demo SPHEREx](http://127.0.0.1:8000/api/spherex/demo) muestra tres épocas de R Draconis y Gaia proyectada al WCS final. Verificación Windows con 60 pruebas y comprobación de interacción en Chrome. La ruta principal Next.js del equipo conserva su alcance anterior.
+- Siguiente dependencia, completar M1-08/M4-04 con selección automática de entradas comparables, FITS procesado y conexión general. En paralelo, probar el Dockerfile en un entorno con Docker y verificar el hosting para M4-05. Quedan las pruebas de extremo a extremo de los demás objetivos y la entrega. El [tracker local](docs/NOTION_TASK_TRACKER.md) indica el estado por fila.
 
 Actualizado: 2026-11-15. Leer este archivo primero y después [el seguimiento de tareas de Notion](docs/NOTION_TASK_TRACKER.md). Este documento transfiere el contexto del agente de Linux al agente de Windows; el cambio de equipo no reinicia el proyecto.
 
@@ -103,7 +104,9 @@ El contrato implementado corresponde a Gaia y su proyección. **Todavía falta e
 - Chromium: escritorio y móvil, selección por teclado, descarga, estados vacío/error y limpieza de datos anteriores, sin errores JavaScript ni desbordamiento horizontal.
 - Estas son verificaciones históricas del 14 de noviembre. Volver a ejecutar las pertinentes en Windows; no afirmar que Windows ya fue validado.
 
-## Limitaciones y trabajo pendiente que no se debe perder
+## Limitaciones al iniciar el traspaso
+
+Esta sección conserva la referencia de partida. Los estados vigentes de los módulos están al principio y en el tracker.
 
 1. El visor original `src/components/SkyCanvas.tsx` dibuja estrellas, movimientos y flags simulados. Los espectros de `pipeline.py` y del endpoint Next.js son sintéticos.
 2. El checkout inicial no incluye `src/lib/astronomy` ni `src/lib/spherex-bands`, aunque se importan en varios componentes. No afirmar que Next.js compila. Solucionar lo estrictamente necesario si bloquea una tarea de integración.
@@ -167,7 +170,7 @@ En otra consola PowerShell, desde la raíz del repo:
 
 Los outputs temporales anteriores no sobrescriben la evidencia guardada del commit funcional. La prueba visual necesita el servidor activo. No copiar `.venv`, `node_modules`, `.cache`, procesos ni rutas de Chromium de Linux a Windows. Los archivos FITS grandes no se versionan por defecto.
 
-## Primera sesión de implementación en Windows
+## Orden original de la primera sesión de implementación en Windows
 
 1. Leer el tracker y revisar si `upstream` tiene avances nuevos de compañeros. Verificar el backend existente en Windows.
 2. Registrar en el tracker qué tarea de Notion se aborda. Resolver primero los puntos pendientes de **M4-01: contrato entre módulos**, usando los contratos Gaia existentes y definiendo observaciones/frames, procesamiento, errores, unidades y procedencia. Revisar **M4-03** para precisar qué propagación está cubierta y qué falta para los objetivos rápidos.

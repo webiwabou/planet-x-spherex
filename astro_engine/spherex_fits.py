@@ -10,6 +10,7 @@ from astropy import units as u
 from astropy.io import fits
 from astropy.time import Time
 from astropy.wcs import WCS
+from astropy.io.fits import HDUList
 from pydantic import BaseModel
 
 from spherex_archive import Observation
@@ -50,6 +51,15 @@ def group_by_epoch(cutouts: list[CutoutMetadata]) -> list[list[CutoutMetadata]]:
     return groups
 
 
+def cutout_wcs(hdul: HDUList) -> tuple[WCS, WCS]:
+    header = hdul["IMAGE"].header
+    celestial = WCS(header, fobj=hdul).celestial
+    spectral = WCS(header, fobj=hdul, key="W")
+    # The alternate WCS-WAVE table maps detector pixels directly (IRSA cutout tutorial).
+    spectral.sip = None
+    return celestial, spectral
+
+
 def extract_cutout_metadata(data: bytes, observation: Observation) -> CutoutMetadata:
     with fits.open(io.BytesIO(data), memmap=False) as hdul:
         image_header = hdul["IMAGE"].header
@@ -76,14 +86,11 @@ def extract_cutout_metadata(data: bytes, observation: Observation) -> CutoutMeta
         ):
             raise ValueError("FITS intensity and variance units are inconsistent")
 
-        celestial = WCS(image_header, fobj=hdul).celestial
+        celestial, spectral = cutout_wcs(hdul)
         if celestial.has_distortion and any(
             getattr(celestial, name) is not None for name in ("cpdis1", "cpdis2", "det2im1", "det2im2")
         ):
             raise ValueError("Cannot serialize a WCS that depends on external distortion tables")
-        spectral = WCS(image_header, fobj=hdul, key="W")
-        # The alternate WCS-WAVE table maps detector pixels directly (IRSA cutout tutorial).
-        spectral.sip = None
         wave, band = spectral.pixel_to_world((width - 1) / 2, (height - 1) / 2)
         wave_um, band_um = wave.to_value(u.um), band.to_value(u.um)
         return CutoutMetadata(

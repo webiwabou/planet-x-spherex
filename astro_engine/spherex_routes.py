@@ -1,9 +1,15 @@
 from __future__ import annotations
 
-from typing import Annotated
+import hashlib
+from pathlib import Path
+from typing import Annotated, Any
 
 import httpx
+import numpy as np
+from astropy.time import Time
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 
 from pipeline import parse_sky_coordinates
 from spherex_archive import (
@@ -15,6 +21,7 @@ from spherex_archive import (
     search_observations,
 )
 from spherex_fits import CutoutMetadata, extract_cutout_metadata
+from spherex_processing import process_series
 
 
 router = APIRouter(prefix="/api/spherex", tags=["SPHEREx"])
@@ -87,3 +94,93 @@ def metadata(observation_id: str, region: Annotated[SearchRegion, Depends(parse_
     except (OSError, ValueError, KeyError) as exc:
         detail = {"code": "invalid_fits_metadata", "message": "IRSA cutout metadata could not be read."}
         raise HTTPException(502, detail=detail) from exc
+
+
+class FrameQuery(BaseModel):
+    ra: str
+    dec: str
+    fov_arcmin: float = Field(default=8, ge=0.5, le=12)
+    observation_ids: list[str] = Field(min_length=1, max_length=6)
+    detector_id: int = Field(ge=1, le=6)
+    wavelength_um: float = Field(gt=0, le=6)
+    bandwidth_um: float = Field(gt=0, le=1)
+
+
+class QuickLookFrame(BaseModel):
+    frame_id: str
+    observation_time: str
+    observations: list[CutoutMetadata]
+    effective_band_um: tuple[float, float]
+    covered_pixels: int
+    preview: list[int]
+
+
+class QuickLookSeries(BaseModel):
+    schema_version: int = 1
+    region: SearchRegion
+    width: int
+    height: int
+    wcs_header: dict[str, Any]
+    display_limits_mjy_sr: tuple[float, float] | None
+    frames: list[QuickLookFrame]
+
+
+@router.post("/frames", response_model=QuickLookSeries)
+def frames(query: FrameQuery) -> QuickLookSeries:
+    region = parse_region(query.ra, query.dec, query.fov_arcmin)
+    try:
+        result = search_observations(region, SIA_MAX_ROWS)
+        by_id = {item.observation_id: item for item in result.observations}
+        missing = set(query.observation_ids) - by_id.keys()
+        if missing:
+            status = 409 if result.truncated else 404
+            raise HTTPException(status, detail={"code": "observations_missing", "message": ", ".join(sorted(missing))})
+        inputs = []
+        for observation_id in dict.fromkeys(query.observation_ids):
+            item = by_id[observation_id]
+            data, _ = get_cutout(item, region)
+            inputs.append((extract_cutout_metadata(data, item), data))
+    except ArchiveUnavailable as exc:
+        raise archive_error(exc) from exc
+    except (OSError, ValueError, KeyError) as exc:
+        raise HTTPException(502, detail={"code": "invalid_fits_metadata", "message": str(exc)}) from exc
+
+    try:
+        series = process_series(
+            region, inputs, detector_id=query.detector_id,
+            wavelength_um=query.wavelength_um, bandwidth_um=query.bandwidth_um,
+        )
+    except ValueError as exc:
+        raise HTTPException(422, detail={"code": "unusable_series", "message": str(exc)}) from exc
+    height, width = series.grid.array_shape
+    output = []
+    if series.display_limits is not None:
+        low, high = series.display_limits
+        for frame in series.frames:
+            valid = frame.coverage > 0
+            preview = np.full((height, width), -1, dtype=np.int16)
+            if low == high:
+                preview[valid] = 128
+            else:
+                preview[valid] = np.rint(np.clip((frame.intensity[valid] - low) / (high - low), 0, 1) * 255)
+            first = Time(frame.observations[0].time.mid_utc)
+            last = Time(frame.observations[-1].time.mid_utc)
+            versions = "|".join(item.observation.access_url for item in frame.observations)
+            key = f"v1|{region.model_dump_json()}|{query.detector_id}|{query.wavelength_um}|{query.bandwidth_um}|{versions}"
+            output.append(QuickLookFrame(
+                frame_id=hashlib.sha256(key.encode()).hexdigest(),
+                observation_time=f"{(first + (last - first) / 2).utc.isot}Z",
+                observations=frame.observations,
+                effective_band_um=frame.effective_band_um,
+                covered_pixels=int(valid.sum()),
+                preview=preview.ravel().tolist(),
+            ))
+    return QuickLookSeries(
+        region=region, width=width, height=height, wcs_header=dict(series.grid.to_header()),
+        display_limits_mjy_sr=series.display_limits, frames=output,
+    )
+
+
+@router.get("/demo", include_in_schema=False)
+def blink_demo() -> FileResponse:
+    return FileResponse(Path(__file__).with_name("spherex_demo.html"), media_type="text/html")

@@ -1,6 +1,6 @@
 # Contrato propuesto del visor SPHEREx (M4-01)
 
-Versión del contrato `1`, pendiente de revisión por el equipo. M1 produce observaciones y recortes, M2 produce frames comparables, M4 proyecta Gaia y M3 consume la serie. Están disponibles las rutas de observaciones, recortes, metadatos y proyección Gaia. La ruta de frames sigue propuesta.
+Versión del contrato `1`, pendiente de revisión por el equipo. M1 produce observaciones y recortes, M2 produce frames comparables, M4 proyecta Gaia y M3 consume la serie. La ruta de frames disponible genera una vista preliminar a partir de observaciones seleccionadas.
 
 ## Región y rutas
 
@@ -9,7 +9,7 @@ Versión del contrato `1`, pendiente de revisión por el equipo. M1 produce obse
 | `GET /api/spherex/observations` | `ra`, `dec`, `fov_arcmin` (por defecto 8), `limit` | `schema_version`, `region`, `observations`, `truncated`, `warnings` |
 | `GET /api/spherex/observations/{observation_id}/cutout` | La misma región de la búsqueda | FITS multiextensión (`application/fits`), que M2 recibe junto con los metadatos de la observación |
 | `GET /api/spherex/observations/{observation_id}/metadata` | La misma región de la búsqueda | Metadatos extraídos del FITS, incluidos el tiempo, WCS, unidades y espectro local |
-| `GET /api/spherex/frames` | Región, `wavelength_um` y `bandwidth_um` positivas | `schema_version`, `region`, `band`, `grid`, `frames`, `display`, `truncated`, `warnings` |
+| `POST /api/spherex/frames` | Región de 0.5′–12′, 1–6 `observation_ids` de la búsqueda, `detector_id`, `wavelength_um` y `bandwidth_um` positivas | `schema_version`, `region`, `width`, `height`, `wcs_header`, `display_limits_mjy_sr`, `frames` |
 | `POST /api/catalogues/gaia/project` | `frame_id`, `observation_time`, `width`, `height`, `wcs_header`, `sources` | Proyección al WCS final. Véase [contrato Gaia](MEMBER4_API.md#proyección-sobre-el-frame-final) |
 
 `region` contiene `ra_deg`, `dec_deg` ICRS y `fov_arcmin`, ancho completo del cuadrado entre 0.5′ y 120′. RA admite grados `[0, 360)` u horas HMS `[0, 24)`. Dec admite grados `[-90, 90]` o DMS, con el signo aplicado a los tres componentes. Los campos pueden mezclar formatos. La ruta heredada `/api/coordinates/resolve` conserva su error HTTP 400. Las rutas nuevas usan 422. Para seleccionar candidatos, M1 consulta un círculo que cubre el cuadrado. El footprint final determina la cobertura efectiva.
@@ -31,20 +31,19 @@ La caché de FITS incluye URL versionada y región normalizada. Solo se publica 
 
 El agrupador de visitas usa el tiempo medio FITS. Ordena por UTC y apertura de cada grupo, con un intervalo máximo de 24 h entre el primer y el último midpoint. Este criterio operativo conserva por separado los recortes y sus longitudes de onda para que M2 determine su compatibilidad.
 
-## Serie y cuadrícula (M2 → M3/M4)
+## Serie preliminar y cuadrícula (M2 → M3/M4)
 
-- `band` declara `wavelength_um`, `bandwidth_um` y el criterio de compatibilidad aplicado. Cada frame conserva el rango espectral efectivo de sus aportes. Cuando no haya aportes compatibles, la serie queda vacía y explica el motivo.
-- `grid` declara `width`, `height`, `wcs_header`, `pixel_origin: 0` y orientación norte arriba. El WCS celestial final se usa en todos los frames y debe poder reconstruirse desde el header sin tablas externas para la ruta Gaia actual.
-- Cada elemento de `frames` lleva `frame_id`, `epoch_id`, `observation_ids`, `observation_time` (UTC, representativo del frame), intervalo temporal, detectores, `science_url`, `preview_url`, unidades y calidad. El ID identifica región, banda, cuadrícula, versiones de entrada y receta de procesamiento. Ordenar por fecha y usar `frame_id` como desempate.
-- El FITS procesado lleva intensidad, varianza propagada cuando sea válida, footprint y máscara de calidad. Píxeles inválidos o sin datos se representan como NaN en ciencia y con cobertura o máscara explícita. En JSON los valores ausentes se representan por `null`. No interpretar incertidumbre desconocida como cero.
-- `display` registra los límites, transformación y unidad compartidos por toda la serie. El PNG se sirve con píxeles inválidos transparentes. Si su fila cero corresponde a la última del FITS, usar `y_png = height - 1 - y_px`. La proyección Gaia recibe el WCS del FITS final y la fecha real de ese frame.
+- Cada frame contiene `frame_id`, `observation_time`, observaciones de origen con fechas, `effective_band_um`, `covered_pixels` y `preview`. Cuando no haya aportes compatibles, `frames` está vacío y los límites de visualización son `null`.
+- El WCS es TAN norte arriba, este a la izquierda. Sus coordenadas de píxel usan origen cero. La serie aplica una escala lineal compartida en MJy/sr entre percentiles globales 2 y 98. `preview` contiene enteros de 0 a 255 en orden `[y,x]` aplanado, con −1 para píxeles sin contribución. Para un canvas con origen superior izquierdo, invertir filas y usar `y_canvas = height - 1 - y_px`.
+- El procesamiento conserva en memoria intensidad, varianza estadística, cobertura por píxel y motivos de rechazo. Falta servir la descarga FITS procesada con estas capas, y la selección automática de observaciones aptas para la banda.
 
 Ejemplo de búsqueda, con valores de entrada únicamente:
 
 ```text
 GET /api/spherex/observations?ra=269.4520769586187&dec=4.69336496657667&fov_arcmin=8
-GET /api/spherex/frames?ra=269.4520769586187&dec=4.69336496657667&fov_arcmin=8&wavelength_um=1.65&bandwidth_um=0.04
 ```
+
+La [demo de R Draconis](http://127.0.0.1:8000/api/spherex/demo) usa tres IDs reales y la ruta de proyección Gaia. Ver [validación](SPHEREX_VALIDATION.md#serie-de-r-draconis).
 
 ## Estados de respuesta
 
