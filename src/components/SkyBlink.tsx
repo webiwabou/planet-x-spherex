@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { projector } from "@/lib/render/scene";
-import { formatDec, formatRA, worldOf } from "@/lib/sky";
+import { positionAt } from "@/lib/series";
+import { formatDec, formatRA, tangentOffset, worldOf } from "@/lib/sky";
 import { useStoreValue } from "@/lib/store";
 import { TARGETS, fieldSpecOf, targetByKey } from "@/lib/targets";
 import type { Target } from "@/lib/targets";
-import { levelsOf, panView, unproject, zoomView } from "@/lib/view";
+import { readUrlView, worldAt, writeUrlView } from "@/lib/url";
+import { clampCamera, levelsOf, panView, unproject, zoomView } from "@/lib/view";
 import {
   activeField,
   app,
@@ -44,6 +46,13 @@ function visitTarget(target: Target) {
   if (!spec) return;
   void loadField(spec);
   flyToSpec(spec);
+}
+
+function targetNear(raDeg: number, decDeg: number): Target | null {
+  return TARGETS.find((t) => {
+    const offset = tangentOffset(t.raDeg, t.decDeg, raDeg, decDeg);
+    return !!offset && Math.hypot(offset[0], offset[1]) < t.fovArcmin * 60 * 1.5;
+  }) ?? null;
 }
 
 function ringAt(sx: number, sy: number): Target | null {
@@ -96,6 +105,17 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
   useEffect(() => {
     dom.stage = stage.current;
     getApi();
+    const restored = readUrlView(new URLSearchParams(window.location.search));
+    if (restored) {
+      const target = targetNear(restored.raDeg, restored.decDeg);
+      const spec = target ? fieldSpecOf(target, restored.detectorId ?? undefined) ?? fieldSpecOf(target) : fieldSpecOf(TARGETS[0]);
+      const [x, y] = worldAt(restored.raDeg, restored.decDeg, target);
+      camera.set((c) =>
+        clampCamera({ ...c, x, y, zoom: viewport.width / (restored.fovArcmin * 60), pitch: restored.pitch, bearing: restored.bearing, timestamp: restored.epochMs ?? c.timestamp }, limits()),
+      );
+      if (spec) void loadField(spec);
+      return;
+    }
     const spec = fieldSpecOf(TARGETS[0]);
     camera.set((c) => ({ ...c, ...homeCamera() }));
     if (!spec) return;
@@ -109,6 +129,27 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
       if (!app.get().touched) flyToSpec(spec);
     }, 900);
     return () => clearTimeout(timer);
+  }, []);
+
+  // The address mirrors the view once the camera has been idle for a moment
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const write = () => {
+      const c = camera.get();
+      const [raDeg, decDeg] = skyAt(c.x, c.y);
+      const f = activeField();
+      const epochMs = f ? (f.times.length ? f.times[Math.round(positionAt(f.times, c.timestamp))] : null) : undefined;
+      writeUrlView({ raDeg, decDeg, fovArcmin: viewport.width / c.zoom / 60, epochMs, detectorId: f?.detectorId, pitch: c.pitch, bearing: c.bearing });
+    };
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = setTimeout(write, 400);
+    };
+    const unsubscribe = [camera.subscribe(schedule), app.subscribe(schedule)];
+    return () => {
+      clearTimeout(timer);
+      unsubscribe.forEach((fn) => fn());
+    };
   }, []);
 
   const closeRadial = useCallback(() => setRadial(null), []);

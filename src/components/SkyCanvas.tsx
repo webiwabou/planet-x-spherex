@@ -78,9 +78,9 @@ export function SkyCanvas({ area, onInput, onClick, onContextMenu }: Props) {
       const state = app.get();
       if (L.macro < 0.5) {
         const key = nearestFieldKey(c);
-        if (key && key !== state.activeKey) {
+        if (key !== state.activeKey) {
           app.set({ activeKey: key });
-          snapTime();
+          if (key) snapTime();
         }
       }
       const pending = state.load.status === "loading" && !state.fields[state.load.spec.key] ? state.load.spec : null;

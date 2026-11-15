@@ -10,7 +10,7 @@ import type { Levels } from "../view";
 import { sansFont, serifFont, setFont } from "./theme";
 import type { Theme } from "./theme";
 
-export type PendingField = { raDeg: number; decDeg: number; fovArcmin: number };
+export type PendingField = { raDeg: number; decDeg: number; fovArcmin: number; label: string };
 
 export type SceneInput = {
   ctx: CanvasRenderingContext2D;
@@ -207,6 +207,11 @@ function drawPending(s: SceneInput, P: ReturnType<typeof projector>, pending: Pe
   ctx.closePath();
   ctx.stroke();
   ctx.setLineDash([]);
+  if (1 - smoothstep(20, 90, size) <= 0.01) {
+    ctx.fillStyle = s.theme.ink;
+    setFont(ctx, serifFont(s.theme, 20));
+    ctx.fillText(pending.label, corners[0][0], corners[0][1] - 10);
+  }
   ctx.globalAlpha = 1;
 }
 

@@ -7,7 +7,8 @@ import { formatDate } from "../sky";
 import { rgbaOf, sansFont, setFont } from "./theme";
 import type { Theme } from "./theme";
 
-export const TIMELINE = { height: 84, left: 72, right: 28, line: 26, ribbon: 60 } as const;
+// The left margin leaves room for the play and menu buttons
+export const TIMELINE = { height: 84, left: 112, right: 28, line: 26, ribbon: 60 } as const;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 

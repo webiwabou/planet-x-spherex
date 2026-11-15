@@ -239,7 +239,7 @@ export function loadField(spec: FieldSpec): Promise<Field | null> {
       const state = app.get();
       app.set({
         fields: { ...state.fields, [spec.key]: field },
-        activeKey: state.activeKey ?? spec.key,
+        activeKey: state.activeKey === null || inReach(field, camera.get()) ? spec.key : state.activeKey,
         load: { status: "idle" },
       });
       if (app.get().activeKey === spec.key) snapTime();
@@ -263,12 +263,15 @@ export function retryLoad() {
   if (load.status === "error") void loadField(load.spec);
 }
 
-// The nearest loaded field to the view centre is the one the timeline and readout describe
+const inReach = (f: { wx: number; wy: number; sizeArcsec: number }, c: Camera) =>
+  Math.hypot(f.wx - c.x, f.wy - c.y) <= Math.max(2 * f.sizeArcsec, (0.5 * viewport.width) / c.zoom);
+
+// The nearest loaded field within reach of the view is the one the timeline and readout describe
 export function nearestFieldKey(c: Camera): string | null {
   let best: string | null = null, bestDistance = Infinity;
   for (const [key, f] of Object.entries(app.get().fields)) {
     const d = Math.hypot(f.wx - c.x, f.wy - c.y);
-    if (d < bestDistance) {
+    if (d < bestDistance && inReach(f, c)) {
       bestDistance = d;
       best = key;
     }
