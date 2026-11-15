@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { archiveNotes } from "@/lib/archive-notes";
 import { useStoreValue } from "@/lib/store";
 import type { ApiErrorCode } from "@/lib/types";
 import { app, dismissLoadError, nearestTarget, retryLoad, visitTarget } from "@/lib/viewer";
@@ -96,9 +97,15 @@ export function StatusLine() {
 
   if (emptyField) {
     const near = nearestTarget(emptyField.raDeg, emptyField.decDeg);
+    const count = emptyField.series.archive_count;
+    const { problems, info } = archiveNotes(emptyField.series.warnings);
+    const detail = [info.length ? `${info.join("; ")}.` : "", ...problems].filter(Boolean).join(" ");
     return (
       <div className="status" aria-live="polite">
-        <span>SPHEREx has images here, but no two visits saw the same narrow band at this spot yet.</span>
+        <span>
+          SPHEREx has {count ? `${count} D${emptyField.detectorId} images` : "images"} here, but no two visits saw the same narrow band at this spot yet.
+        </span>
+        {detail && <span className="status-detail">{detail.charAt(0).toUpperCase() + detail.slice(1)}</span>}
         <span className="status-actions">
           {near.id !== emptyField.targetId && (
             <button type="button" onClick={() => visitTarget(near)}>

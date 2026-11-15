@@ -274,7 +274,7 @@ export function loadField(spec: FieldSpec, quiet = false): Promise<Field | null>
         fields: { ...state.fields, [spec.key]: field },
         activeKey: state.activeKey === null || inReach(field, camera.get()) ? spec.key : state.activeKey,
         load: { status: "idle" },
-        notice: problems.length ? problems.join(" ") : state.notice,
+        notice: problems.length && series.frames.length ? problems.join(" ") : state.notice,
       });
       if (app.get().activeKey === spec.key) snapTime();
       return field;
