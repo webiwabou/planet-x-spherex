@@ -11,6 +11,10 @@ Public-facing interactive web tool to visualize and discover moving objects, bro
 
 ---
 
+## Continuar desde Windows
+
+Lee [CONTEXT.md](CONTEXT.md) y el [seguimiento por tareas de Notion](docs/NOTION_TASK_TRACKER.md). Incluyen el estado real del código, lo que falta por miembro y el orden de continuación. Prioridad: backend, integración y despliegue; frontend mínimo para hacer visibles los avances.
+
 ## Member 4 — Gaia DR3 progress
 
 Real Gaia field queries, epoch propagation, WCS projection API, local caching and a standalone demo are implemented. Run:
