@@ -1,0 +1,35 @@
+{
+  "barnards_star": [
+    {
+      "detector_id": 3,
+      "wavelength_um": 2.149,
+      "bandwidth_um": 0.0542,
+      "observation_ids": ["2025W35_1A_0008_4/D3", "2026W12_2A_0520_1/D3", "2026W19_1A_0216_1/D3"]
+    }
+  ],
+  "epsilon_indi_b": [],
+  "wise_0855": [
+    {
+      "detector_id": 6,
+      "wavelength_um": 4.9628,
+      "bandwidth_um": 0.0372,
+      "observation_ids": ["2025W19_1B_0116_1/D6", "2026W20_1A_0033_1/D6"]
+    }
+  ],
+  "rw_aurigae": [
+    {
+      "detector_id": 1,
+      "wavelength_um": 0.9713,
+      "bandwidth_um": 0.0253,
+      "observation_ids": ["2025W36_1A_0663_1/D1", "2026W37_1A_0524_1/D1"]
+    }
+  ],
+  "r_draconis": [
+    {
+      "detector_id": 3,
+      "wavelength_um": 1.9886,
+      "bandwidth_um": 0.0488,
+      "observation_ids": ["2025W23_2B_0382_1/D3", "2025W24_2D_0074_1/D3", "2026W01_1A_0257_3/D3", "2026W17_1B_0434_3/D3", "2026W19_2A_1339_2/D3"]
+    }
+  ]
+}

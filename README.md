@@ -21,7 +21,15 @@ On Linux or macOS, use `.venv/bin/python` for the two commands after creating th
 - [SPHEREx API & Data Contract](docs/SPHEREX_API.md) — documented inputs, outputs, and FITS metadata schema for Member 1's SPHEREx data retrieval & backend module.
 - [NASA 5-Target SPHEREx Validation Report](docs/SPHEREX_VALIDATION.md) — live archive verification and sample FITS cutouts (`resources/sample_data/` & `resources/spherex/samples/`) generated via `astro_engine/spherex_sample.py`.
 
-The live demos require access to IRSA and the ESA Gaia Archive. The saved Gaia example runs locally. The blink viewer is a quick-look tool with selected observation IDs. The separate Next.js prototype contains simulated imagery and spectra.
+The live demos require access to IRSA and the ESA Gaia Archive. The saved Gaia example runs locally. The blink viewer is a quick-look tool with selected observation IDs.
+
+## Run the sky viewer
+
+The frontend is a Next.js app under `src`. With Node 18 or later, run `npm install` and then `npm run dev`, and open http://localhost:3000.
+
+By default it shows recorded `POST /api/spherex/frames` responses for the five targets from `public/fixtures`, so it runs without the backend or IRSA. Add `?data=live` to the address, or set `NEXT_PUBLIC_SPHEREX_DATA=live` at build time, to call the backend at `NEXT_PUBLIC_SPHEREX_API` (default `http://localhost:8000`).
+
+Each target's series is one narrow band seen at several visits. Its observation IDs, wavelength and bandwidth are in `src/lib/series-presets.json`. With the backend running, `npm run record-fixtures` records fresh responses.
 
 ## Test and run in a container
 
