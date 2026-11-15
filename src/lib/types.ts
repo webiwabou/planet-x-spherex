@@ -77,6 +77,12 @@ export type QuickLookSeries = {
   wcs_header: Record<string, unknown>;
   display_limits_mjy_sr: [number, number] | null;
   frames: QuickLookFrame[];
+  warnings?: string[];
+  source?: "live" | "saved";
+  archive_observations?: Observation[];
+  archive_count?: number;
+  archive_truncated?: boolean;
+  fits_url?: string | null;
 };
 
 export type FrameQuery = {

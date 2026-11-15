@@ -10,6 +10,7 @@ export interface SkyApi {
   frames(query: FrameQuery, signal?: AbortSignal): Promise<QuickLookSeries>;
   resolve(ra: string, dec: string, signal?: AbortSignal): Promise<ResolvedCoordinates>;
   targets(signal?: AbortSignal): Promise<TargetAvailability[]>;
+  exportFits(query: FrameQuery, cachedUrl?: string | null, signal?: AbortSignal): Promise<Blob>;
 }
 
 // An empty value means the API is served from the same origin as the page

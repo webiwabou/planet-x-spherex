@@ -70,5 +70,8 @@ export function createMockApi(root = "/fixtures"): SkyApi {
       const body = await load<{ results?: TargetAvailability[] }>(`${root}/${targets_file}`, signal);
       return body.results ?? [];
     },
+    async exportFits(): Promise<Blob> {
+      throw new ApiError("no_fixture", "Exporting FITS needs the backend. Add ?data=live to the address.");
+    },
   };
 }

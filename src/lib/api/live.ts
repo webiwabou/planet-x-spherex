@@ -34,5 +34,26 @@ export function createLiveApi(base: string): SkyApi {
       const body = await request<{ results?: TargetAvailability[] }>(root, "/api/spherex/targets", {}, signal);
       return body.results ?? [];
     },
+    // The backend keeps a processed series as FITS for an hour; after that it is rebuilt from the same query
+    async exportFits(query: FrameQuery, cachedUrl?: string | null, signal?: AbortSignal): Promise<Blob> {
+      try {
+        if (cachedUrl) {
+          const cached = await fetch(root + cachedUrl, { signal });
+          if (cached.ok) return await cached.blob();
+        }
+        const response = await fetch(`${root}/api/spherex/frames/fits`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(query),
+          signal,
+        });
+        if (!response.ok) throw errorFromResponse(response.status, await response.json().catch(() => null));
+        return await response.blob();
+      } catch (e) {
+        if (e instanceof ApiError) throw e;
+        if (signal?.aborted) throw new ApiError("aborted", "The request was cancelled.");
+        throw new ApiError("network", "The SPHEREx service did not answer.");
+      }
+    },
   };
 }

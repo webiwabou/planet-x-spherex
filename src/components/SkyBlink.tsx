@@ -14,6 +14,7 @@ import {
   app,
   camera,
   dom,
+  downloadFits,
   fieldCamera,
   flyTo,
   flyToSpec,
@@ -189,15 +190,17 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
     const coords = `${formatRA(ra)} ${formatDec(dec)}`;
     const f = activeField();
     const many = !!f && f.visits.length > 1;
+    // Phones hide the ? button, so the gesture sheet takes the menu slot of the visit before, which the timeline also offers
+    const narrow = viewport.width < 640;
     const items: RadialItem[] = [];
     if (many) {
-      items.push({ label: app.get().playing ? "Pause the blink" : "Play the blink", run: togglePlay });
       items.push({ label: "Next visit", run: () => stepVisit(1) });
-      items.push({ label: "Visit before", run: () => stepVisit(-1) });
+      if (!narrow) items.push({ label: "Visit before", run: () => stepVisit(-1) });
     }
     items.push({ label: "Copy coordinates", run: () => copyText(coords) });
     items.push({ label: "Copy a link", run: () => copyText(window.location.href) });
     items.push({ label: "Search the sky", run: () => setSearch(true) });
+    if (f && f.visits.length && app.get().apiKind !== "mock") items.push({ label: "Download FITS", run: () => void downloadFits() });
     if (L.macro < 0.6) {
       const flat = c.pitch > 0.3;
       items.push({ label: flat ? "Lay the plate flat" : "Stand the plate up", run: () => flyTo({ pitch: flat ? 0 : 0.95, bearing: flat ? 0 : -0.35 }, 700) });
@@ -206,7 +209,7 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
       const ring = ringAt(sx, sy);
       if (ring) items.push({ label: `Fly to ${ring.name}`, run: () => visitTarget(ring) });
     }
-    items.push({ label: "Gestures", run: () => setHelp(true) });
+    if (narrow) items.push({ label: "Gestures", run: () => setHelp(true) });
     return items.slice(0, 8);
   }, []);
 

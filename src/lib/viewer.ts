@@ -1,6 +1,7 @@
 import { apiKind, createApi } from "./api/client";
 import type { ApiKind, SkyApi } from "./api/client";
 import { ApiError, isAbort } from "./api/errors";
+import { archiveNotes } from "./archive-notes";
 import { createCameraStore } from "./camera";
 import type { Camera } from "./camera";
 import type { WheelMode } from "./gestures";
@@ -268,10 +269,12 @@ export function loadField(spec: FieldSpec, quiet = false): Promise<Field | null>
       }
       const field = buildField(spec, series, app.get().stretch);
       const state = app.get();
+      const { problems } = archiveNotes(series.warnings);
       app.set({
         fields: { ...state.fields, [spec.key]: field },
         activeKey: state.activeKey === null || inReach(field, camera.get()) ? spec.key : state.activeKey,
         load: { status: "idle" },
+        notice: problems.length ? problems.join(" ") : state.notice,
       });
       if (app.get().activeKey === spec.key) snapTime();
       return field;
@@ -316,6 +319,30 @@ export function widenFieldIfNeeded(c: Camera) {
     observationIds: f.observationIds,
   };
   void loadField(spec, true);
+}
+
+// Saves the processed series on screen as a multi-extension FITS file built by the backend
+export async function downloadFits() {
+  const f = activeField();
+  if (!f || f.visits.length === 0) {
+    toast("Load a field with frames first.");
+    return;
+  }
+  toast("Preparing the FITS file…");
+  try {
+    const blob = await getApi().exportFits({ ...queryOf(f), fov_arcmin: f.series.region.fov_arcmin }, f.series.fits_url);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `spherex-${f.targetId ?? "field"}-d${f.detectorId}.fits`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    toast("FITS file saved");
+  } catch (e) {
+    toast(e instanceof ApiError && e.message ? e.message : "The FITS file could not be prepared.");
+  }
 }
 
 export function retryLoad() {

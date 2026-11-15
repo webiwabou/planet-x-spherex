@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { smoothstep } from "@/lib/camera";
+import { archiveNotes } from "@/lib/archive-notes";
 import { flagWarnings } from "@/lib/flags";
 import { positionAt } from "@/lib/series";
 import type { Field } from "@/lib/series";
@@ -74,6 +75,13 @@ export function SourceCard() {
   const [lo, hi] = frame.effective_band_um;
   const first = frame.observations[0]?.observation;
   const warnings = flagWarnings(frame.observations);
+  const { info } = archiveNotes(field.series.warnings);
+  const count = field.series.archive_count;
+  const archive = info.length
+    ? info.join("; ")
+    : count
+      ? `${count} D${field.detectorId} observations here${field.series.archive_truncated ? ", more not listed" : ""}`
+      : null;
   return (
     <div ref={ref} className="card" role="region" aria-label={`Visit ${visitIndex + 1} of ${field.visits.length}`} style={{ width: CARD_W }}>
       <h3>{field.label}</h3>
@@ -104,6 +112,12 @@ export function SourceCard() {
               {first.release.toUpperCase()} {first.observation_id}
               {frame.observations.length > 1 ? ` and ${frame.observations.length - 1} more` : ""}
             </dd>
+          </>
+        )}
+        {archive && (
+          <>
+            <dt>Archive</dt>
+            <dd>{archive}</dd>
           </>
         )}
       </dl>

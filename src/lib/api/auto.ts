@@ -23,5 +23,6 @@ export function createAutoApi(recorded: SkyApi, live: SkyApi): SkyApi {
       }
     },
     targets: (signal?: AbortSignal) => live.targets(signal).catch(() => recorded.targets(signal)),
+    exportFits: (query: FrameQuery, cachedUrl?: string | null, signal?: AbortSignal) => live.exportFits(query, cachedUrl, signal),
   };
 }
