@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Barnard's star",
+    "resolver_url": "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?Barnard%27s%20star",
+    "resolved": [
+      [
+        "oname",
+        "NAME Barnard's star"
+      ],
+      [
+        "jradeg",
+        "269.4520769586187"
+      ],
+      [
+        "jdedeg",
+        "4.69336496657667"
+      ]
+    ]
+  },
+  {
+    "name": "eps Ind B",
+    "resolver_url": "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?eps%20Ind%20B",
+    "resolved": [
+      [
+        "oname",
+        "* eps Ind B"
+      ],
+      [
+        "jradeg",
+        "331.04414658852124"
+      ],
+      [
+        "jdedeg",
+        "-56.78284419511611"
+      ]
+    ]
+  },
+  {
+    "name": "WISE J085510.83-071442.5",
+    "resolver_url": "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?WISE%20J085510.83-071442.5",
+    "resolved": [
+      [
+        "oname",
+        "WISEA J085510.74-071442.5"
+      ],
+      [
+        "jradeg",
+        "133.81890825"
+      ],
+      [
+        "jdedeg",
+        "-7.247048"
+      ]
+    ]
+  },
+  {
+    "name": "RW Aur",
+    "resolver_url": "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?RW%20Aur",
+    "resolved": [
+      [
+        "oname",
+        "V* RW Aur"
+      ],
+      [
+        "jradeg",
+        "76.95652603458"
+      ],
+      [
+        "jdedeg",
+        "30.40143817389"
+      ]
+    ]
+  },
+  {
+    "name": "R Dra",
+    "resolver_url": "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?R%20Dra",
+    "resolved": [
+      [
+        "oname",
+        "V* R Dra"
+      ],
+      [
+        "jradeg",
+        "248.16761083295"
+      ],
+      [
+        "jdedeg",
+        "66.75497941722"
+      ]
+    ]
+  }
+]

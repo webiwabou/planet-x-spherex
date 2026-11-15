@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>R Draconis · SPHEREx</title>
+  <style>
+    body { margin: 1rem auto; max-width: 42rem; padding: 0 1rem; background: #10131b; color: #e9eefb; font: 1rem/1.5 Inter, system-ui, sans-serif; }
+    canvas { display: block; width: min(100%, 32rem); height: auto; background: #243047; image-rendering: pixelated; }
+    button { padding: .45rem .75rem; margin: 0 .25rem .5rem 0; font: inherit; }
+    a { color: #9ecaff; }
+  </style>
+</head>
+<body>
+  <h1>R Draconis</h1>
+  <p>SPHEREx DR1 y QR3 · Detector D3 · 1,720 ± 0,021 µm · Campo de 8′</p>
+  <button id="load">Cargar serie</button>
+  <button id="previous" disabled>Anterior</button>
+  <button id="next" disabled>Siguiente</button>
+  <button id="play" disabled>Reproducir</button>
+  <button id="gaia" disabled>Mostrar Gaia</button>
+  <p id="status" role="status"></p>
+  <canvas id="image" width="1" height="1" aria-label="Imagen infrarroja de SPHEREx"></canvas>
+  <p id="metadata"></p>
+  <p id="catalogue-status" role="status"></p>
+  <p><a href="/docs">API y esquemas</a></p>
+  <script>
+    const sample = {
+      ra: "248.16761083295", dec: "66.75497941722", fov_arcmin: 8,
+      observation_ids: ["2025W52_2A_0161_4/D3", "2026W20_2A_0294_4/D3", "2026W24_1A_0125_2/D3"],
+      detector_id: 3, wavelength_um: 1.720, bandwidth_um: 0.042
+    };
+    const byId = id => document.getElementById(id);
+    const canvas = byId("image");
+    const context = canvas.getContext("2d");
+    const status = byId("status");
+    const catalogueStatus = byId("catalogue-status");
+    const controls = ["previous", "next", "play", "gaia"].map(byId);
+    let series, index = 0, timer, overlay;
+
+    async function getJson(url, body) {
+      const response = await fetch(url, body && {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail?.message || (typeof data.detail === "string" && data.detail) || `HTTP ${response.status}`);
+      return data;
+    }
+
+    function show() {
+      const { width, height } = series;
+      const frame = series.frames[index];
+      const pixels = context.createImageData(width, height);
+      frame.preview.forEach((value, offset) => {
+        const y = Math.floor(offset / width), x = offset % width;
+        const target = 4 * ((height - 1 - y) * width + x);
+        if (value < 0) return;
+        pixels.data.set([value, value, value, 255], target);
+      });
+      context.putImageData(pixels, 0, 0);
+      if (overlay) {
+        context.strokeStyle = "#46eeff";
+        context.lineWidth = 0.4;
+        for (const source of overlay[index].sources) {
+          if (!source.in_frame) continue;
+          context.beginPath();
+          context.arc(source.x_px + 0.5, height - source.y_px - 0.5, 1, 0, 2 * Math.PI);
+          context.stroke();
+        }
+      }
+      const ids = frame.observations.map(item => `${item.observation.release.toUpperCase()} ${item.observation.observation_id}`);
+      byId("metadata").textContent = `${index + 1}/${series.frames.length} · ${frame.observation_time} · ${ids.join(", ")} · ${frame.covered_pixels}/${width * height} píxeles válidos`;
+    }
+
+    function move(step) {
+      index = (index + step + series.frames.length) % series.frames.length;
+      show();
+    }
+
+    byId("load").onclick = async () => {
+      byId("load").disabled = true;
+      clearInterval(timer);
+      timer = undefined;
+      byId("play").textContent = "Reproducir";
+      controls.forEach(button => button.disabled = true);
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      byId("metadata").textContent = "";
+      status.textContent = "Consultando IRSA…";
+      try {
+        series = await getJson("/api/spherex/frames", sample);
+        if (!series.frames.length) {
+          status.textContent = "Sin imágenes compatibles en esta banda.";
+          return;
+        }
+        const limits = series.display_limits_mjy_sr.map(value => Number(value.toPrecision(4)));
+        status.textContent = `Escala común ${limits.join(" a ")} MJy/sr. El fondo azul indica píxeles sin datos compatibles.`;
+        index = 0;
+        overlay = undefined;
+        catalogueStatus.textContent = "";
+        canvas.width = series.width;
+        canvas.height = series.height;
+        controls.forEach(button => button.disabled = false);
+        show();
+      } catch (error) {
+        status.textContent = `La serie no se pudo cargar. ${error.message}`;
+      } finally {
+        byId("load").disabled = false;
+      }
+    };
+
+    byId("previous").onclick = () => move(-1);
+    byId("next").onclick = () => move(1);
+    byId("play").onclick = () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = undefined;
+      } else {
+        timer = setInterval(() => move(1), 700);
+      }
+      byId("play").textContent = timer ? "Pausar" : "Reproducir";
+    };
+    byId("gaia").onclick = async () => {
+      byId("gaia").disabled = true;
+      byId("load").disabled = true;
+      catalogueStatus.textContent = "Consultando y proyectando Gaia…";
+      try {
+        const params = new URLSearchParams({
+          ra_deg: series.region.ra_deg, dec_deg: series.region.dec_deg,
+          fov_arcmin: series.region.fov_arcmin, limit: 300,
+          observation_time: series.frames.at(-1).observation_time
+        });
+        const catalogue = await getJson(`/api/catalogues/gaia?${params}`);
+        overlay = await Promise.all(series.frames.map(frame => getJson("/api/catalogues/gaia/project", {
+          frame_id: frame.frame_id, observation_time: frame.observation_time, width: series.width,
+          height: series.height, wcs_header: series.wcs_header, sources: catalogue.sources
+        })));
+        catalogueStatus.textContent = catalogue.truncated ? "Gaia DR3 · catálogo truncado a 300 fuentes." : "Gaia DR3 · fuentes proyectadas a la fecha de cada frame.";
+        show();
+      } catch (error) {
+        catalogueStatus.textContent = `Gaia no se pudo cargar. ${error.message}`;
+        byId("gaia").disabled = false;
+      } finally {
+        byId("load").disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

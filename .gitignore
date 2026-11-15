@@ -58,3 +58,6 @@ Thumbs.db
 *.h5
 *.hdf5
 !resources/sample_data/*.fits
+
+# Local catalogue query cache
+.cache/

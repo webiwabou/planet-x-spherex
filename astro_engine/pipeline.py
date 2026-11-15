@@ -18,46 +18,45 @@ DETECTOR_RANGES = {
 }
 
 
-def parse_sky_coordinates(ra_input: str | float, dec_input: str | float) -> Tuple[float, float]:
-    """Parse RA and Dec from either float degrees or sexagesimal strings."""
-    if isinstance(ra_input, (int, float)) and isinstance(dec_input, (int, float)):
-        return float(ra_input) % 360.0, max(-90.0, min(90.0, float(dec_input)))
+SEXAGESIMAL = re.compile(r"([0-9]+)(?:\s*:\s*|\s+)([0-9]+)(?:\s*:\s*|\s+)([0-9]+(?:\.[0-9]+)?)")
+HMS = re.compile(r"([0-9]+)\s*h\s*([0-9]+)\s*m\s*([0-9]+(?:\.[0-9]+)?)\s*s?", re.IGNORECASE)
+DMS = re.compile(r"""([0-9]+)\s*[d°]\s*([0-9]+)\s*[m'′]\s*([0-9]+(?:\.[0-9]+)?)\s*[s"″]?""", re.IGNORECASE)
 
-    ra_str = str(ra_input).strip()
-    dec_str = str(dec_input).strip()
 
+def _parse_angle(value: str | float, axis: str, units: re.Pattern[str]) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f"{axis} must be a decimal angle or a sexagesimal string.")
+    raw = str(value).strip()
     try:
-        return float(ra_str) % 360.0, max(-90.0, min(90.0, float(dec_str)))
+        return float(raw)
     except ValueError:
         pass
 
-    # RA sexagesimal: 08h 55m 10.831s
-    ra_match = re.match(
-        r"^\s*([0-9]+)[\s:h]\s*([0-9]+)[\s:m]\s*([0-9.]+)[s]?\s*$", ra_str, re.IGNORECASE
-    )
-    if not ra_match:
-        raise ValueError(f"Invalid RA format: '{ra_str}'.")
+    unsigned = raw[1:] if raw.startswith(("+", "-")) else raw
+    match = SEXAGESIMAL.fullmatch(unsigned) or units.fullmatch(unsigned)
+    if match is None:
+        raise ValueError(f"Invalid {axis} format.")
 
-    h = float(ra_match.group(1))
-    m = float(ra_match.group(2))
-    s = float(ra_match.group(3))
-    ra_deg = (h + m / 60.0 + s / 3600.0) * 15.0
+    major, minutes, seconds = (float(part) for part in match.groups())
+    if minutes >= 60 or seconds >= 60:
+        raise ValueError(f"{axis} minutes and seconds must each be less than 60.")
+    angle = major + minutes / 60.0 + seconds / 3600.0
+    if axis == "RA":
+        if raw.startswith("-"):
+            raise ValueError("RA hours must be non-negative.")
+        angle *= 15.0
+    return -angle if raw.startswith("-") else angle
 
-    # Dec sexagesimal: -07d 14m 42.53s
-    dec_sign = -1.0 if "-" in dec_str else 1.0
-    dec_clean = dec_str.lstrip("+-").strip()
-    dec_match = re.match(
-        r"^\s*([0-9]+)[\s:d°]\s*([0-9]+)[\s:m\']\s*([0-9.]+)[s\"]?\s*$", dec_clean, re.IGNORECASE
-    )
-    if not dec_match:
-        raise ValueError(f"Invalid Dec format: '{dec_str}'.")
 
-    d = float(dec_match.group(1))
-    dm = float(dec_match.group(2))
-    ds = float(dec_match.group(3))
-    dec_deg = dec_sign * (d + dm / 60.0 + ds / 3600.0)
-
-    return ra_deg % 360.0, max(-90.0, min(90.0, dec_deg))
+def parse_sky_coordinates(ra_input: str | float, dec_input: str | float) -> Tuple[float, float]:
+    """Convert ICRS coordinates to degrees, accepting mixed input formats."""
+    ra_deg = _parse_angle(ra_input, "RA", HMS)
+    dec_deg = _parse_angle(dec_input, "Dec", DMS)
+    if not 0 <= ra_deg < 360:
+        raise ValueError("RA must be finite and in [0, 360) degrees.")
+    if not -90 <= dec_deg <= 90:
+        raise ValueError("Dec must be finite and in [-90, 90] degrees.")
+    return ra_deg, dec_deg
 
 
 def compute_102_band_spectrum(ra_deg: float, dec_deg: float, target_id: str = "generic") -> ExtractedSpectrumResponse:
