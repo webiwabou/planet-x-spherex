@@ -7,6 +7,8 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from pipeline import parse_sky_coordinates, compute_102_band_spectrum, compute_image_difference_residual
+from fastapi.testclient import TestClient
+from main import app
 
 
 def test_parse_sexagesimal_coordinates():
@@ -23,6 +25,41 @@ def test_parse_decimal_degrees():
     ra_deg, dec_deg = parse_sky_coordinates(269.452083, 4.693361)
     assert pytest.approx(ra_deg, abs=1e-4) == 269.452083
     assert pytest.approx(dec_deg, abs=1e-4) == 4.693361
+
+
+@pytest.mark.parametrize(("ra", "dec", "expected"), [
+    ("12:00:00", "-0.25", (180.0, -0.25)),
+    ("180", "-00° 30′ 00″", (180.0, -0.5)),
+    ("12 00 00", "+90:00:00", (180.0, 90.0)),
+    (0, -90, (0.0, -90.0)),
+])
+def test_parse_coordinates_with_mixed_formats_and_poles(ra, dec, expected):
+    assert parse_sky_coordinates(ra, dec) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(("ra", "dec"), [
+    ("nan", "0"),
+    ("120", "inf"),
+    ("-1", "0"),
+    ("360", "0"),
+    ("24:00:00", "0"),
+    ("-00:00:01", "0"),
+    ("12:60:00", "0"),
+    ("12h00m60s", "0"),
+    ("120", "90.01"),
+    ("120", "-90:00:01"),
+    ("120", "12:60:00"),
+    ("120", "--00:30:00"),
+])
+def test_parse_coordinates_rejects_invalid_angles(ra, dec):
+    with pytest.raises(ValueError):
+        parse_sky_coordinates(ra, dec)
+
+
+def test_resolve_coordinates_reports_invalid_dec():
+    response = TestClient(app).get("/api/coordinates/resolve", params={"ra": "12:00:00", "dec": "91"})
+    assert response.status_code == 400
+    assert response.json()["detail"].startswith("Dec must be")
 
 
 def test_102_band_spectrum_generation():

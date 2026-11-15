@@ -1,0 +1,55 @@
+{
+  "verified_at": "2026-11-14T23:38:17.516272+00:00",
+  "targets": [
+    {
+      "id": "barnards_star",
+      "name": "Barnard’s Star",
+      "ra_deg": 269.4520769586187,
+      "dec_deg": 4.69336496657667,
+      "coordinate_epoch": null,
+      "resolver_url": "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?Barnard%27s%20star",
+      "resolver_name": "NAME Barnard's star",
+      "note": "ICRS/J2000 search center returned by CDS/SIMBAD; coordinate reference epoch not supplied by this resolver response. Not a propagated target ephemeris."
+    },
+    {
+      "id": "epsilon_indi_b",
+      "name": "Epsilon Indi B",
+      "ra_deg": 331.04414658852124,
+      "dec_deg": -56.78284419511611,
+      "coordinate_epoch": null,
+      "resolver_url": "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?eps%20Ind%20B",
+      "resolver_name": "* eps Ind B",
+      "note": "ICRS/J2000 search center returned by CDS/SIMBAD; coordinate reference epoch not supplied by this resolver response. Not a propagated target ephemeris."
+    },
+    {
+      "id": "wise_0855",
+      "name": "WISE 0855",
+      "ra_deg": 133.79512916666667,
+      "dec_deg": -7.245147222222222,
+      "coordinate_epoch": null,
+      "resolver_url": "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?WISE%20J085510.83-071442.5",
+      "resolver_name": "WISEA J085510.74-071442.5",
+      "note": "Search center supplied in the NASA challenge text. CDS returns a different astrometric position; do not mix positions without reference epochs."
+    },
+    {
+      "id": "rw_aurigae",
+      "name": "RW Aurigae",
+      "ra_deg": 76.95652603458,
+      "dec_deg": 30.40143817389,
+      "coordinate_epoch": null,
+      "resolver_url": "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?RW%20Aur",
+      "resolver_name": "V* RW Aur",
+      "note": "ICRS/J2000 search center returned by CDS/SIMBAD; coordinate reference epoch not supplied by this resolver response. Not a propagated target ephemeris."
+    },
+    {
+      "id": "r_draconis",
+      "name": "R Draconis",
+      "ra_deg": 248.16761083295,
+      "dec_deg": 66.75497941722,
+      "coordinate_epoch": null,
+      "resolver_url": "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?R%20Dra",
+      "resolver_name": "V* R Dra",
+      "note": "ICRS/J2000 search center returned by CDS/SIMBAD; coordinate reference epoch not supplied by this resolver response. Not a propagated target ephemeris."
+    }
+  ]
+}

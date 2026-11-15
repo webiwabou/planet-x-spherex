@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="es">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
+  <title>Gaia DR3 · Planet-X SPHEREx</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #05070f;
+      --panel: #101827;
+      --text: #f8fafc;
+      --muted: #bac8d9;
+      --accent: #38bdf8;
+      --line: #33455d;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font:
+        16px/1.55 system-ui,
+        sans-serif;
+    }
+    main {
+      max-width: 1160px;
+      margin: auto;
+      padding: 36px 24px;
+    }
+    h1 {
+      font-size: clamp(1.8rem, 4vw, 2.7rem);
+      margin: 0 0 12px;
+    }
+    p {
+      max-width: 72ch;
+      color: var(--muted);
+    }
+    a {
+      color: var(--accent);
+      text-underline-offset: 4px;
+    }
+    form {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin: 28px 0;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.9rem;
+    }
+    input,
+    button,
+    select {
+      font: inherit;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      background: var(--panel);
+      color: var(--text);
+      min-width: 0;
+    }
+    button {
+      cursor: pointer;
+      background: var(--accent);
+      color: #071320;
+      font-weight: 650;
+      align-self: end;
+    }
+    button:hover {
+      background: #7dd3fc;
+    }
+    button:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+    input:focus-visible,
+    button:focus-visible,
+    select:focus-visible,
+    a:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 3px;
+    }
+    input {
+      caret-color: var(--accent);
+    }
+    ::selection {
+      background: #155e75;
+      color: white;
+    }
+    .view {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(240px, 0.7fr);
+      gap: 28px;
+      align-items: start;
+    }
+    .plot {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    figcaption {
+      padding: 12px 16px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    figure {
+      margin: 0;
+    }
+    #status {
+      min-height: 26px;
+      color: var(--accent);
+    }
+    #warnings {
+      padding-left: 20px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    #detail {
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+    h2 {
+      font-size: 1.2rem;
+      margin: 0 0 12px;
+    }
+    .table-wrap {
+      overflow: auto;
+      margin-top: 32px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+    }
+    th,
+    td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    th {
+      color: var(--muted);
+    }
+    .source {
+      fill: var(--accent);
+      stroke: #d9f3ff;
+      stroke-width: 0.6;
+    }
+    .source:focus,
+    .source:hover {
+      fill: #fbbf24;
+      stroke: #fff;
+      stroke-width: 2;
+      outline: none;
+    }
+    small {
+      color: var(--muted);
+    }
+    footer {
+      margin-top: 32px;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    @media (max-width: 720px) {
+      main {
+        padding: 24px 16px;
+      }
+      form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .view {
+        grid-template-columns: 1fr;
+      }
+      button {
+        min-height: 46px;
+      }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      button {
+        transition: background 0.15s ease-out;
+      }
+    }
+  </style>
+  <main>
+    <h1>Explora el contexto Gaia DR3</h1>
+    <p>
+      Consulta estrellas conocidas y lleva sus posiciones a la fecha que elijas.
+      Este avance del miembro 4 está listo para recibir las imágenes procesadas
+      del equipo.
+    </p>
+    <p>
+      <strong>Mapa de catálogo real sobre una cuadrícula de prueba.</strong> No
+      muestra imágenes SPHEREx. Los puntos no representan mediciones de brillo
+      SPHEREx.
+    </p>
+    <form id="query">
+      <label
+        >Objetivo de prueba<select id="preset">
+          <option value="">Coordenadas personalizadas</option>
+        </select></label
+      >
+      <label
+        >RA · grados ICRS<input
+          name="ra_deg"
+          type="number"
+          min="0"
+          max="359.999999999"
+          step="any"
+          value="269.452083"
+          required
+      /></label>
+      <label
+        >Dec · grados ICRS<input
+          name="dec_deg"
+          type="number"
+          min="-90"
+          max="90"
+          step="any"
+          value="4.693361"
+          required
+      /></label>
+      <label
+        >Campo · ancho en arcmin<input
+          name="fov_arcmin"
+          type="number"
+          min="0.5"
+          max="120"
+          step="any"
+          value="8"
+          required
+      /></label>
+      <label
+        >Fecha · UTC<input
+          name="date"
+          type="date"
+          min="2000-01-01"
+          max="2099-12-31"
+          value="2026-01-01"
+          required
+      /></label>
+      <button type="submit" id="submit">Consultar Gaia</button>
+      <button type="button" id="example">Ver ejemplo guardado</button>
+    </form>
+    <p id="status" role="status" aria-live="polite">
+      Introduce coordenadas y pulsa Consultar Gaia.
+    </p>
+    <div class="view">
+      <figure class="plot">
+        <svg
+          id="map"
+          viewBox="0 0 600 600"
+          role="group"
+          aria-label="Mapa de fuentes Gaia. Selecciona un punto para consultar sus datos."
+        >
+          <g stroke="#33455d" stroke-width="1">
+            <path
+              d="M150 0V600M300 0V600M450 0V600M0 150H600M0 300H600M0 450H600"
+            />
+          </g>
+          <g id="sources"></g>
+          <text x="16" y="25" fill="#bac8d9" font-size="14">
+            N arriba · E a la izquierda · WCS TAN de prueba
+          </text>
+        </svg>
+        <figcaption id="caption">
+          Posiciones propagadas mediante movimiento propio. Sin paralaje
+          aparente anual.
+        </figcaption>
+      </figure>
+      <aside>
+        <h2>Fuente seleccionada</h2>
+        <p id="detail">
+          Selecciona un punto del mapa o un identificador de la tabla.
+        </p>
+        <h2>Información de la consulta</h2>
+        <p id="summary">Todavía no hay resultados.</p>
+        <ul id="warnings">
+          <li>
+            Una fuente infrarroja puede no tener contraparte óptica en Gaia.
+          </li>
+        </ul>
+        <a id="download" hidden>Descargar resultado JSON</a>
+      </aside>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <caption>
+          Fuentes dentro del campo · coordenadas en la fecha seleccionada
+        </caption>
+        <thead>
+          <tr>
+            <th>Source ID</th>
+            <th>RA · °</th>
+            <th>Dec · °</th>
+            <th>G · mag</th>
+            <th>Movimiento</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <footer>
+      Planet-X · Módulo de catálogos e integración ·
+      <a href="/docs">Contrato API interactivo</a> ·
+      <a href="https://www.cosmos.esa.int/web/gaia/dr3">Gaia DR3 / ESA</a>
+    </footer>
+  </main>
+  <script>
+    const form = document.querySelector("#query"),
+      status = document.querySelector("#status"),
+      button = document.querySelector("#submit");
+    const ns = "http://www.w3.org/2000/svg";
+    let downloadUrl;
+    function showSource(s) {
+      document.querySelector("#detail").textContent =
+        `Gaia DR3 ${s.source_id} · RA ${s.propagated_ra_deg.toFixed(7)}° · Dec ${s.propagated_dec_deg.toFixed(7)}° · época original J${s.ref_epoch} · μRA* ${s.pmra_mas_yr ?? "sin dato"} mas/año · μDec ${s.pmdec_mas_yr ?? "sin dato"} mas/año · paralaje ${s.parallax_mas ?? "sin dato"} mas · G ${s.phot_g_mean_mag ?? "sin dato"} mag · ${s.propagation_warning ?? ""} · ${s.propagation_status === "missing_proper_motion" ? "Sin movimiento propio: se conserva la posición original." : "Posición propagada con movimiento propio angular."}`;
+    }
+    fetch("/api/catalogues/targets")
+      .then((r) => r.json())
+      .then((data) => {
+        const select = document.querySelector("#preset");
+        for (const t of data.targets) {
+          const option = document.createElement("option");
+          option.value = t.id;
+          option.textContent = t.name;
+          select.append(option);
+        }
+        select.addEventListener("change", () => {
+          clearResults();
+          const target = data.targets.find((t) => t.id === select.value);
+          if (target) {
+            form.elements.ra_deg.value = target.ra_deg;
+            form.elements.dec_deg.value = target.dec_deg;
+            status.textContent =
+              "Centro de búsqueda de " +
+              target.name +
+              ". Pulsa Consultar Gaia para actualizar el mapa.";
+          }
+        });
+      })
+      .catch(() => {});
+    function clearResults() {
+      document.querySelector("#sources").replaceChildren();
+      document.querySelector("#rows").replaceChildren();
+      document.querySelector("#download").hidden = true;
+      document.querySelector("#summary").textContent = "Esperando resultados.";
+      document.querySelector("#detail").textContent =
+        "Selecciona una fuente cuando termine la consulta.";
+    }
+    function render(data, saved = false) {
+      const visible = data.projection.sources.filter((s) => s.in_frame);
+      document.querySelector("#sources").replaceChildren();
+      document.querySelector("#rows").replaceChildren();
+      document.querySelector("#detail").textContent =
+        "Selecciona una fuente para ver su información.";
+      for (const s of visible) {
+        const dot = document.createElementNS(ns, "circle");
+        dot.setAttribute("cx", s.x_px + 0.5);
+        dot.setAttribute("cy", 599.5 - s.y_px);
+        dot.setAttribute("r", "4");
+        dot.setAttribute("class", "source");
+        dot.setAttribute("tabindex", "0");
+        dot.setAttribute("role", "button");
+        dot.setAttribute("aria-label", "Gaia DR3 " + s.source_id);
+        const title = document.createElementNS(ns, "title");
+        title.textContent = "Gaia DR3 " + s.source_id;
+        dot.append(title);
+        dot.onclick = () => showSource(s);
+        dot.onkeydown = (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            showSource(s);
+          }
+        };
+        document.querySelector("#sources").append(dot);
+        const row = document.createElement("tr"),
+          idCell = document.createElement("td"),
+          sourceButton = document.createElement("button");
+        sourceButton.type = "button";
+        sourceButton.textContent = s.source_id;
+        sourceButton.onclick = () => showSource(s);
+        idCell.append(sourceButton);
+        row.append(idCell);
+        for (const value of [
+          s.propagated_ra_deg.toFixed(7),
+          s.propagated_dec_deg.toFixed(7),
+          s.phot_g_mean_mag?.toFixed(2) ?? "—",
+          s.propagation_status === "missing_proper_motion"
+            ? "Sin dato"
+            : "Propagado",
+        ]) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.append(cell);
+        }
+        document.querySelector("#rows").append(row);
+      }
+      status.textContent =
+        (saved ? "Ejemplo guardado · " : "") +
+        (visible.length
+          ? `${visible.length} fuentes dentro del campo.${data.catalogue.truncated ? " Resultado incompleto: reduce el campo." : ""}`
+          : data.catalogue.truncated
+            ? "Resultado incompleto: no hay fuentes visibles entre los resultados recibidos. Reduce el campo o aumenta el límite en la API."
+            : "Consulta completada: no hay fuentes dentro del campo. Prueba un campo mayor.");
+      document.querySelector("#summary").textContent =
+        `${data.catalogue.sources.length} fuentes en la búsqueda ampliada · ${data.catalogue.cache_hit ? "caché local" : "consulta al archivo ESA"} · obtenido ${data.catalogue.retrieved_at} · fecha del mapa ${data.projection.observation_time} UTC.`;
+      document.querySelector("#warnings").replaceChildren();
+      for (const text of [
+        "Modelo angular: no incluye paralaje anual ni efectos de velocidad radial.",
+        "El margen de búsqueda cubre movimientos de hasta 15 000 mas/año desde J2016.0.",
+        "Gaia es óptico: no se garantiza una contraparte del objetivo infrarrojo.",
+        ...(data.catalogue.truncated
+          ? ["Límite de resultados alcanzado; el mapa puede omitir fuentes."]
+          : []),
+      ]) {
+        const li = document.createElement("li");
+        li.textContent = text;
+        document.querySelector("#warnings").append(li);
+      }
+      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+      downloadUrl = URL.createObjectURL(
+        new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+      );
+      const link = document.querySelector("#download");
+      link.href = downloadUrl;
+      link.download = "gaia-dr3-context.json";
+      link.hidden = false;
+    }
+    async function load(url, saved = false) {
+      for (const field of form.elements) field.disabled = true;
+      clearResults();
+      status.textContent = saved
+        ? "Cargando ejemplo guardado…"
+        : "Consultando Gaia… la respuesta puede tardar unos segundos.";
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (!response.ok)
+          throw Error(
+            typeof data.detail === "string"
+              ? data.detail
+              : "Revisa las coordenadas, el campo y la fecha.",
+          );
+        if (saved) {
+          for (const k of ["ra_deg", "dec_deg", "fov_arcmin"])
+            form.elements[k].value = data.catalogue.query[k];
+          form.elements.date.value =
+            data.catalogue.query.observation_time.slice(0, 10);
+          document.querySelector("#preset").value = "barnards_star";
+        }
+        render(data, saved);
+      } catch (error) {
+        status.textContent =
+          "No se pudo completar la consulta. " +
+          error.message +
+          " Vuelve a intentarlo.";
+      } finally {
+        for (const field of form.elements) field.disabled = false;
+      }
+    }
+    form.addEventListener("input", () => {
+      clearResults();
+      status.textContent =
+        "Parámetros cambiados. Consulta Gaia para actualizar el mapa.";
+    });
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const params = new URLSearchParams();
+      for (const [k, v] of new FormData(form))
+        if (k !== "date") params.set(k, v);
+      params.set("observation_time", form.elements.date.value + "T00:00:00");
+      params.set("limit", "1000");
+      load("/api/catalogues/gaia/demo?" + params);
+    });
+    document.querySelector("#example").onclick = () =>
+      load("/api/catalogues/gaia/example", true);
+  </script>
+</html>

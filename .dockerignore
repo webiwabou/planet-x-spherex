@@ -1,0 +1,11 @@
+**
+!Dockerfile
+!astro_engine/
+!astro_engine/*.py
+!astro_engine/*.html
+!astro_engine/requirements.txt
+!resources/
+!resources/gaia/
+!resources/gaia/targets.json
+!resources/gaia/samples/
+!resources/gaia/samples/barnards_star.json
