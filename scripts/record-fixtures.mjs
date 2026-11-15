@@ -1,5 +1,4 @@
-// Records real POST /api/spherex/frames responses for the curated series in src/lib/series-presets.json
-// Usage: node scripts/record-fixtures.mjs [--base=http://127.0.0.1:8000] [target_id ...]
+// Records POST /api/spherex/frames for every preset in src/lib/series-presets.json; optional --base=URL and target ids narrow it
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
