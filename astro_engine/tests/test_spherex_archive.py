@@ -8,6 +8,7 @@ import pytest
 from astropy.io import fits
 from astropy.table import Table
 from astropy.time import Time
+from astropy.wcs import WCS
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -200,6 +201,18 @@ def test_distinguishes_empty_results_and_archive_failure():
         search_observations(REGION, transport=failure)
 
 
+def test_partial_search_keeps_available_release_and_warns():
+    def reply(request):
+        if request.url.params["COLLECTION"] == "spherex_dr1":
+            return httpx.Response(200, text=votable(image_row("dr1", 27, 60790)))
+        return httpx.Response(502)
+
+    result = search_observations(REGION, transport=httpx.MockTransport(reply), allow_partial=True)
+    assert [item.release for item in result.observations] == ["dr1"]
+    assert result.warnings[0]["code"] == "archive_release_unavailable"
+    assert "QR3" in result.warnings[0]["message"]
+
+
 def test_spatial_validation_runs_before_archive_request():
     response = TestClient(app).get("/api/spherex/observations", params={"ra": "12h00m00s", "dec": "91"})
     assert response.status_code == 422
@@ -293,6 +306,28 @@ def test_real_sample_cutouts_and_target_endpoints():
         assert extracted.observation.observation_id == obs.observation_id
         assert extracted.variance_summary is not None
         assert extracted.quality_flags is not None
+        saved_result = client.get(f"/api/spherex/samples/{tid}/frames").raise_for_status().json()
+        assert saved_result["source"] == "saved"
+        assert saved_result["frames"][0]["covered_pixels"] > 0
+        assert client.get(f"/api/catalogues/gaia/samples/{tid}").status_code == 200
+
+
+def test_combined_real_cutouts_keep_spectral_lookup():
+    client = TestClient(app)
+    data = client.get("/api/spherex/samples/r_draconis").raise_for_status().json()
+    root = Path(__file__).resolve().parents[2]
+    pairs = [
+        (Observation.model_validate(data["sample_cutouts"][release]["metadata"]["observation"]),
+         (root / filename).read_bytes())
+        for release, filename in data["sample_fits_files"].items()
+    ]
+    combined = package_cutouts_mef(pairs, SearchRegion.model_validate(data["search_region"]))
+    with fits.open(io.BytesIO(combined)) as bundle:
+        for index, (_, original) in enumerate(pairs, start=1):
+            with fits.open(io.BytesIO(original)) as cutout:
+                before = WCS(cutout["IMAGE"].header, cutout, key="W")
+                after = WCS(bundle[f"IMAGE{index}"].header, bundle, key="W")
+                assert np.allclose(before.wcs_pix2world(30, 30, 0), after.wcs_pix2world(30, 30, 0))
 
 
 def test_http_endpoints_observations_cutouts_mef_and_auto_frames(monkeypatch, tmp_path):
@@ -421,5 +456,14 @@ def test_http_endpoints_observations_cutouts_mef_and_auto_frames(monkeypatch, tm
     assert len(frames_json["frames"]) == 2
     assert frames_json["frames"][0]["observations"][0]["observation"]["observation_id"] == "2025W17_4B_0127_1/D3"
     assert frames_json["frames"][1]["observations"][0]["observation"]["observation_id"] == "2026W17_1A_0210_1/D3"
+
+    def fail_search(*_args, **_kwargs):
+        raise AssertionError("Export of a rendered series should not query IRSA again")
+
+    monkeypatch.setattr(spherex_routes, "search_observations", fail_search)
+    export = client.get(frames_json["fits_url"]).raise_for_status()
+    with fits.open(io.BytesIO(export.content)) as hdul:
+        assert hdul["IMAGE1"].shape == hdul["VARIANCE1"].shape == hdul["COVERAGE1"].shape
+        assert hdul["IMAGE2"].shape == hdul["VARIANCE2"].shape == hdul["COVERAGE2"].shape
 
 

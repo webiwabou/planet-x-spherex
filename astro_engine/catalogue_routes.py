@@ -1,8 +1,9 @@
 from pathlib import Path
 import json
+from typing import Literal
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import ValidationError
-from fastapi.responses import HTMLResponse
+from fastapi.responses import RedirectResponse
 from catalogue import (
     CatalogueQuery,
     CatalogueResponse,
@@ -85,9 +86,9 @@ def gaia_demo(
     }
 
 
-@router.get("/catalogues/demo", response_class=HTMLResponse, include_in_schema=False)
+@router.get("/catalogues/demo", response_class=RedirectResponse, include_in_schema=False)
 def demo_page():
-    return Path(__file__).with_name("catalogue_demo.html").read_text(encoding="utf-8")
+    return RedirectResponse("/#gaia")
 
 
 @router.get("/api/catalogues/targets")
@@ -101,12 +102,17 @@ def catalogue_targets():
 
 @router.get("/api/catalogues/gaia/example")
 def catalogue_example():
+    return catalogue_saved_sample("barnards_star")
+
+
+@router.get("/api/catalogues/gaia/samples/{target_id}")
+def catalogue_saved_sample(target_id: Literal["barnards_star", "epsilon_indi_b", "wise_0855", "rw_aurigae", "r_draconis"]):
     path = (
         Path(__file__).resolve().parents[1]
-        / "resources/gaia/samples/barnards_star.json"
+        / "resources/gaia/samples" / f"{target_id}.json"
     )
     if not path.exists():
         raise HTTPException(
             status_code=404, detail="Run catalogue_sample.py to capture the example"
         )
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
