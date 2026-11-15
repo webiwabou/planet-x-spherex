@@ -53,8 +53,10 @@ for (const [targetId, list] of Object.entries(presets)) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(query),
     });
+    // The FITS link expires within the hour and the viewer reads only archive_count, so neither is worth recording
+    const { fits_url, archive_observations, ...kept } = series;
     const file = `frames/${targetId}_d${preset.detector_id}.json`;
-    await writeFile(path.join(out, file), JSON.stringify(series));
+    await writeFile(path.join(out, file), JSON.stringify(kept));
     recorded.set(file, { target_id: targetId, file, query });
     const covered = series.frames.map((f) => `${f.observation_time.slice(0, 10)} ${Math.round((100 * f.covered_pixels) / (series.width * series.height))}%`);
     console.log(`${targetId} D${preset.detector_id}: ${series.frames.length} frames in ${((Date.now() - started) / 1000).toFixed(0)} s, ${covered.join(", ")}`);
