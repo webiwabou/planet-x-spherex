@@ -143,7 +143,7 @@ Las pruebas automáticas usan un transporte HTTP controlado y verifican precisi�
 
 `resources/gaia/targets.json` conserva la procedencia y las coordenadas obtenidas por CDS/SIMBAD; `target_resolution.json` conserva los valores de la respuesta del resolvedor. La respuesta no aporta época astrométrica, por lo que se usan como **centros de búsqueda**, no como efemérides. WISE 0855 usa las coordenadas explícitas del enunciado; se conserva también la discrepancia con la posición resuelta por CDS.
 
-Los presets heredados de `.agents/.../canonical_targets.json` contienen centros diferentes para Epsilon Indi B, RW Aurigae y R Draconis. Este módulo usa sus propios centros verificados. El equipo debe actualizar o sustituir los presets compartidos al integrar el frontend; no trasladar sus movimientos propios sin comprobar procedencia y época.
+Para integrar los presets del visor, usa los centros de búsqueda documentados en `resources/gaia/targets.json`. La propagación de un objetivo requiere una posición y un movimiento propio con procedencia y época explícitas.
 
 ### M4-03: comprobación de centros para objetivos rápidos
 

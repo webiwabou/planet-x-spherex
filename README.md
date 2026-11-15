@@ -11,11 +11,7 @@ Public-facing interactive web tool to visualize and discover moving objects, bro
 
 ---
 
-## Continuar desde Windows
-
-Lee [CONTEXT.md](CONTEXT.md) y el [seguimiento por tareas de Notion](docs/NOTION_TASK_TRACKER.md). Incluyen el estado real del código, lo que falta por miembro y el orden de continuación. Prioridad: backend, integración y despliegue; frontend mínimo para hacer visibles los avances.
-
-## Member 4 — Gaia DR3 progress
+## SPHEREx and Gaia DR3 demos
 
 Real Gaia field queries, epoch propagation, WCS projection API, local caching and a standalone demo are implemented. Run:
 
@@ -24,7 +20,8 @@ pip install -r astro_engine/requirements.txt
 python -m uvicorn main:app --app-dir astro_engine --host 127.0.0.1 --port 8000
 ```
 
-Open **http://localhost:8000/catalogues/demo** and click **Ver ejemplo guardado** for a saved real Gaia example, or query the archive. See [setup, API contract and validation](docs/MEMBER4_API.md).
+- Open the [SPHEREx blink demo](http://localhost:8000/api/spherex/demo) to compare three epochs of R Draconis and overlay Gaia sources. See the [SPHEREx API](docs/SPHEREX_API.md) and [validation guide](docs/SPHEREX_VALIDATION.md).
+- Open the [Gaia catalogue demo](http://localhost:8000/catalogues/demo) and choose **Ver ejemplo guardado** to load a saved field or query the archive. See the [Gaia API](docs/MEMBER4_API.md).
 
 **Current status:** the original sky canvas and spectra below are simulations, and the Next.js checkout has missing shared imports. This Gaia demo works independently; its background is a test WCS grid, not SPHEREx imagery. Full integration and deployment await the other subsystems.
 
@@ -80,7 +77,7 @@ planet-x-spherex/
 │   ├── tests/                     # Automated pytest suite
 │   └── requirements.txt
 ├── resources/
-│   └── incoming/                  # Staging directory for new papers and FITS data
+│   └── gaia/                      # Target coordinates and Gaia catalogue examples
 └── docs/
     └── SPHEREx_CHALLENGE_GUIDE.md # Astrophysics and mission handbook
 ```
@@ -111,14 +108,6 @@ pip install -r requirements.txt
 pytest tests/
 uvicorn main:app --reload --port 8000
 ```
-
----
-
-## 🤖 Integrated Specialized Agent Skills
-
-This repository is powered by two dedicated AI agent skills residing in `.agents/skills`:
-1. `spherex-astrophysics-data-pipeline`: FITS ingesting, WCS reprojection, 102-band spectrophotometric extraction, and IRSA/NASA catalog querying.
-2. `spherex-sky-blink-viewer`: Astronomical frontend engineering, difference imaging, SED visualization, and citizen-science ergonomics.
 
 ---
 
