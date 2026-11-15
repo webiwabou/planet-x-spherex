@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
 COPY astro_engine ./astro_engine
 COPY resources/gaia/targets.json ./resources/gaia/targets.json
 COPY resources/gaia/samples/barnards_star.json ./resources/gaia/samples/barnards_star.json
+COPY resources/spherex/samples ./resources/spherex/samples
 
 USER spherex
 EXPOSE 8000
