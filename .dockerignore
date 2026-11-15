@@ -3,6 +3,7 @@
 !astro_engine/
 !astro_engine/*.py
 !astro_engine/*.html
+!astro_engine/spherex_demo_snapshot.json
 !astro_engine/requirements.txt
 !resources/
 !resources/gaia/

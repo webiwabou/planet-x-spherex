@@ -3,27 +3,258 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>R Draconis · SPHEREx</title>
+  <meta name="color-scheme" content="dark">
+  <title>Explorador SPHEREx</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    body { margin: 1rem auto; max-width: 42rem; padding: 0 1rem; background: #10131b; color: #e9eefb; font: 1rem/1.5 Inter, system-ui, sans-serif; }
-    canvas { display: block; width: min(100%, 32rem); height: auto; background: #243047; image-rendering: pixelated; }
-    button { padding: .45rem .75rem; margin: 0 .25rem .5rem 0; font: inherit; }
-    a { color: #9ecaff; }
+    :root {
+      --black: #070709;
+      --panel: #101014;
+      --line: #292833;
+      --text: #f5f2fb;
+      --muted: #aaa7b9;
+      --accent: #c4afff;
+      --mint: #9ce5ca;
+      --mono: "Space Mono", monospace;
+      color-scheme: dark;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: var(--black); color: var(--text); font: 1rem/1.45 Barlow, system-ui, sans-serif; }
+    a { color: inherit; text-decoration: none; }
+    button, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:disabled, select:disabled { cursor: default; opacity: .48; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    .shell { max-width: 1360px; margin: auto; padding-inline: clamp(16px, 4vw, 60px); }
+    .stars { position: fixed; z-index: 0; inset: 0; overflow: hidden; pointer-events: none; }
+    .stars::before {
+      content: ""; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 72% 0%, #261d4370, transparent 53%);
+    }
+    .star {
+      position: absolute; top: var(--y); left: var(--x); width: var(--size); height: var(--size);
+      background: #d6cdff; opacity: var(--alpha); border-radius: 50%;
+      animation: drift var(--duration) ease-in-out var(--delay) infinite alternate;
+    }
+    .star.bright { box-shadow: 0 0 7px #b89affbb; background: #f9f6ff; }
+    @keyframes drift {
+      to { transform: translate3d(12px, -9px, 0); opacity: .16; }
+    }
+    .stars.still .star { animation-play-state: paused; }
+    @media (prefers-reduced-motion: reduce) { .star { animation: none; } }
+
+    header, main { position: relative; }
+    header { border-bottom: 1px solid #252431; background: #09090cbd; }
+    .topbar { min-height: 70px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: .055em; }
+    .brand-mark {
+      display: grid; place-items: center; width: 33px; aspect-ratio: 1; border: 1px solid #8d70d4;
+      border-radius: 50%; color: var(--accent); font-size: 1.2rem; background: #271c3f;
+      box-shadow: 0 0 24px #8c62d232;
+    }
+    .top-links { display: flex; align-items: center; gap: 15px; color: var(--muted); font-size: .88rem; }
+    .top-links a:hover { color: var(--text); }
+    .ambient { padding: 7px 10px; background: #101017; border: 1px solid var(--line); border-radius: 7px; white-space: nowrap; }
+
+    .intro { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding-block: 31px 24px; }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(2.55rem, 5.4vw, 4.4rem); font-weight: 600; letter-spacing: -.055em; line-height: 1; }
+    .intro p { margin-top: 9px; color: var(--muted); font-size: 1.03rem; }
+    .data-tag {
+      display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; padding: 7px 11px;
+      border: 1px solid #30473f; background: #111d19; color: var(--mint); border-radius: 999px;
+      font: .67rem var(--mono); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+    }
+    .data-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 9px #89efc870; }
+
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 310px); gap: 18px; align-items: start; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+    .viewer { overflow: hidden; }
+    .viewer-head { padding: 14px 17px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .viewer-head h2 { font-size: 1rem; font-weight: 600; }
+    .viewer-head .dataset { color: var(--accent); font: .68rem var(--mono); white-space: nowrap; }
+    .viewport {
+      display: grid; place-items: center; position: relative; isolation: isolate; overflow: hidden;
+      min-height: 320px; height: clamp(320px, 45vw, 500px); background: #08080d;
+      background-image: radial-gradient(ellipse at center, #21172b 0%, #0c0b13 54%, #08080d 76%);
+      container-type: size;
+    }
+    .viewport::after {
+      content: ""; position: absolute; z-index: -1; inset: 0; opacity: .28; pointer-events: none;
+      background-image: linear-gradient(#54516d24 1px, transparent 1px), linear-gradient(90deg, #54516d24 1px, transparent 1px);
+      background-size: 34px 34px;
+      mask-image: radial-gradient(ellipse, #0001 29%, #000 80%);
+    }
+    .field { width: min(82cqw, 91cqh, 456px); aspect-ratio: 1; position: relative; }
+    .field::before, .field::after {
+      content: ""; position: absolute; width: 16px; height: 16px; border-color: #987ecd;
+      border-style: solid; opacity: .8; pointer-events: none;
+    }
+    .field::before { inset: -4px auto auto -4px; border-width: 1px 0 0 1px; }
+    .field::after { inset: auto -4px -4px auto; border-width: 0 1px 1px 0; }
+    .image-crop { width: 100%; height: 100%; display: grid; place-items: center; overflow: hidden; background: #100c19; }
+    #image { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; transform: scale(var(--zoom, 1)); }
+    .view-message { position: absolute; z-index: 1; text-align: center; color: var(--muted); max-width: 26ch; padding: 0 14px; }
+    .compass { position: absolute; bottom: 15px; left: 16px; color: #bcb4d7; display: grid; gap: 3px; font: .63rem var(--mono); }
+    .compass span { display: block; }
+    .scale { position: absolute; right: 16px; bottom: 16px; color: #bcb4d7; font: .64rem var(--mono); }
+    .scale b { font-weight: 400; color: var(--text); }
+
+    .playbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 13px 16px; border-top: 1px solid var(--line); }
+    .controls, .display-controls { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .control {
+      min-height: 37px; min-width: 38px; padding: 7px 10px; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      background: #18171f; border: 1px solid #33313f; border-radius: 8px; font-size: .85rem; font-weight: 600;
+    }
+    .control:hover:not(:disabled) { background: #242130; border-color: #807097; }
+    .control.primary { background: var(--accent); border-color: transparent; color: #1c122b; }
+    .control.primary:hover:not(:disabled) { background: #d9caff; }
+    .control[aria-pressed=true] { color: var(--accent); border-color: #9673d2; background: #261d3a; }
+    .control select { border: 0; background: transparent; }
+    select.control { padding-right: 4px; }
+    .timeline { padding: 10px 16px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+    .epoch {
+      padding: 7px 9px; min-width: 0; border: 1px solid var(--line); border-radius: 8px; text-align: left;
+      background: #0d0d12; color: var(--muted); font: .69rem var(--mono);
+    }
+    .epoch span { display: block; margin-bottom: 2px; color: var(--text); line-height: 1.3; }
+    .epoch:hover { border-color: #735d96; }
+    .epoch[aria-pressed=true] { color: var(--accent); border-color: #8c68ce; background: #231833; }
+
+    .sidebar { display: grid; gap: 14px; }
+    .object, .frame-info { padding: 17px; }
+    .section-label { color: var(--muted); font: .65rem var(--mono); text-transform: uppercase; letter-spacing: .09em; }
+    .object h2 { font-size: 2rem; letter-spacing: -.045em; line-height: 1; margin-top: 5px; }
+    .coordinates { margin: 14px 0 0; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; row-gap: 5px; font: .7rem/1.55 var(--mono); }
+    .coordinates dt { color: var(--muted); }
+    .coordinates dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+    .frame-info h2 { font-size: 1.05rem; margin-bottom: 11px; }
+    .row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding-block: 7px; border-top: 1px solid var(--line); }
+    .row span:first-child { color: var(--muted); font-size: .87rem; }
+    .row strong { font: .67rem var(--mono); text-align: right; overflow-wrap: anywhere; }
+    .frame-info progress { width: 100%; accent-color: var(--accent); height: 5px; display: block; }
+    .status { margin-top: 11px; color: var(--muted); font-size: .82rem; line-height: 1.35; overflow-wrap: anywhere; }
+    .frame-info .control { margin-top: 12px; width: 100%; }
+    .legend { display: flex; align-items: center; gap: 9px; padding: 11px 0 0; color: var(--muted); font-size: .75rem; }
+    .legend::before { content: ""; width: 9px; height: 9px; background: #170f21; border: 1px solid #856ba8; border-radius: 2px; flex-shrink: 0; }
+    .footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-block: 16px 24px; color: var(--muted); font-size: .8rem; }
+    .footer a:hover { color: var(--text); }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: minmax(0, 1fr); }
+      .viewport { height: clamp(320px, 62vw, 480px); }
+      .sidebar { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 550px) {
+      .topbar { min-height: 61px; }
+      .top-links { gap: 8px; }
+      .top-links a { display: none; }
+      .intro { align-items: start; flex-direction: column; gap: 11px; padding-block: 24px 16px; }
+      .intro p { font-size: .93rem; }
+      .viewport { height: clamp(250px, 76vw, 350px); min-height: 250px; }
+      .field { width: min(83cqw, 87cqh); }
+      .compass { bottom: 6px; left: 7px; }
+      .scale { bottom: 6px; right: 7px; }
+      .viewer-head, .playbar { padding-inline: 11px; }
+      .playbar { align-items: start; flex-direction: column; gap: 8px; }
+      .timeline { padding-inline: 11px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .epoch { padding-inline: 6px; font-size: .61rem; }
+      .sidebar { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <h1>R Draconis</h1>
-  <p>SPHEREx DR1 y QR3 · Detector D3 · 1,720 ± 0,021 µm · Campo de 8′</p>
-  <button id="load">Cargar serie</button>
-  <button id="previous" disabled>Anterior</button>
-  <button id="next" disabled>Siguiente</button>
-  <button id="play" disabled>Reproducir</button>
-  <button id="gaia" disabled>Mostrar Gaia</button>
-  <p id="status" role="status"></p>
-  <canvas id="image" width="1" height="1" aria-label="Imagen infrarroja de SPHEREx"></canvas>
-  <p id="metadata"></p>
-  <p id="catalogue-status" role="status"></p>
-  <p><a href="/docs">API y esquemas</a></p>
+  <div id="stars" class="stars" aria-hidden="true"></div>
+  <header>
+    <div class="shell topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">✦</span> PLANET–X</div>
+      <nav class="top-links" aria-label="Recursos">
+        <a href="/docs">API</a>
+        <button id="ambient" class="ambient" type="button" aria-pressed="true">Estrellas animadas</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell">
+    <div class="intro">
+      <div>
+        <h1>Explorador del cielo</h1>
+        <p>Compara imágenes infrarrojas de la misma región en distintas fechas.</p>
+      </div>
+      <span class="data-tag">Datos reales de SPHEREx</span>
+    </div>
+
+    <div class="layout">
+      <section class="card viewer" aria-labelledby="viewer-title">
+        <div class="viewer-head">
+          <h2 id="viewer-title">Comparador temporal</h2>
+          <span class="dataset">D3 · 1,720 µm</span>
+        </div>
+        <div class="viewport">
+          <div id="view-message" class="view-message" role="status">Cargando la serie guardada…</div>
+          <div id="field" class="field" hidden>
+            <div class="image-crop">
+              <canvas id="image" width="1" height="1" role="img" aria-label="Recorte infrarrojo de R Draconis"></canvas>
+            </div>
+          </div>
+          <div class="compass" aria-label="Norte arriba y este a la izquierda"><span aria-hidden="true">↑ N</span><span aria-hidden="true">← E</span></div>
+          <div class="scale">ZOOM <b id="zoom-label">1×</b></div>
+        </div>
+
+        <div class="playbar">
+          <div class="controls" aria-label="Reproducción">
+            <button id="previous" class="control" type="button" aria-label="Anterior" title="Anterior" disabled>←</button>
+            <button id="play" class="control primary" type="button" disabled><span id="play-icon" aria-hidden="true">▶</span> <span id="play-label">Reproducir</span></button>
+            <button id="next" class="control" type="button" aria-label="Siguiente" title="Siguiente" disabled>→</button>
+            <select id="speed" class="control" aria-label="Velocidad de reproducción" disabled>
+              <option value="1">1×</option><option value="2">2×</option><option value=".5">0,5×</option>
+            </select>
+          </div>
+          <div class="display-controls" aria-label="Vista">
+            <button id="zoom" class="control" type="button" title="Cambiar zoom" disabled>Zoom +</button>
+            <button id="grayscale" class="control" type="button" aria-pressed="false" title="Cambiar entre falso color y tonos de gris" disabled>Grises</button>
+            <button id="gaia" class="control" type="button" aria-pressed="false" disabled>Gaia DR3</button>
+          </div>
+        </div>
+        <div id="timeline" class="timeline" aria-label="Épocas disponibles" hidden></div>
+      </section>
+
+      <aside class="sidebar" aria-label="Detalles de la observación">
+        <section class="card object">
+          <p class="section-label">Objetivo</p>
+          <h2>R Draconis</h2>
+          <dl class="coordinates">
+            <dt>RA</dt><dd>248,16761°</dd>
+            <dt>Dec</dt><dd>+66,75498°</dd>
+            <dt>Campo</dt><dd>8′ × 8′</dd>
+          </dl>
+        </section>
+        <section class="card frame-info">
+          <h2>Observación</h2>
+          <div class="row"><span>Fecha UTC</span><strong id="date">—</strong></div>
+          <div class="row"><span>Producto</span><strong id="product">—</strong></div>
+          <div class="row"><span>Píxeles válidos</span><strong id="coverage">—</strong></div>
+          <progress id="coverage-bar" value="0" max="1" aria-label="Fracción de píxeles válidos"></progress>
+          <div class="row" style="margin-top: 9px"><span>Escala de brillo</span><strong id="limits">—</strong></div>
+          <p class="legend">Violeta oscuro: píxeles sin datos en esta banda.</p>
+          <p id="colour-legend" class="status">Falso color. La escala se mantiene entre fechas.</p>
+          <p id="catalogue-status" class="status" role="status" hidden></p>
+          <button id="load" class="control" type="button">Consultar IRSA</button>
+          <p id="status" class="status" role="status"></p>
+        </section>
+      </aside>
+    </div>
+
+    <footer class="footer">
+      <span>SPHEREx / NASA–IPAC · Gaia / ESA</span>
+      <a href="/catalogues/demo">Abrir catálogo Gaia →</a>
+    </footer>
+  </main>
+
   <script>
     const sample = {
       ra: "248.16761083295", dec: "66.75497941722", fov_arcmin: 8,
@@ -33,18 +264,53 @@
     const byId = id => document.getElementById(id);
     const canvas = byId("image");
     const context = canvas.getContext("2d");
-    const status = byId("status");
-    const catalogueStatus = byId("catalogue-status");
-    const controls = ["previous", "next", "play", "gaia"].map(byId);
-    let series, index = 0, timer, overlay;
+    const timeline = byId("timeline");
+    const controls = ["previous", "next", "play", "speed", "zoom", "grayscale", "gaia"].map(byId);
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+    const zoomLevels = [1, 1.5, 2];
+    const dateFormat = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeZone: "UTC" });
+    const numberFormat = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 2 });
+    let series, index = 0, timer, overlay, showOverlay = false, gray = false, zoomIndex = 0;
+
+    const stars = document.createDocumentFragment();
+    for (let i = 0; i < 108; i++) {
+      const star = document.createElement("span");
+      star.className = i % 9 === 0 ? "star bright" : "star";
+      star.style.setProperty("--x", (i * 37.711 % 100) + "%");
+      star.style.setProperty("--y", (i * 71.387 % 100) + "%");
+      star.style.setProperty("--size", (i % 9 === 0 ? 2.6 : 1 + i % 4 * .32) + "px");
+      star.style.setProperty("--alpha", (0.14 + (i % 7) * .1));
+      star.style.setProperty("--duration", (14 + i % 13) + "s");
+      star.style.setProperty("--delay", (-i % 19) + "s");
+      stars.append(star);
+    }
+    byId("stars").append(stars);
+    let ambientMotion = true;
+    function showAmbientState() {
+      const enabled = ambientMotion && !reducedMotion.matches;
+      byId("stars").classList.toggle("still", !enabled);
+      byId("ambient").setAttribute("aria-pressed", String(enabled));
+      byId("ambient").textContent = enabled ? "Estrellas animadas" : "Estrellas estáticas";
+      byId("ambient").disabled = reducedMotion.matches;
+    }
+    byId("ambient").onclick = () => { ambientMotion = !ambientMotion; showAmbientState(); };
+    reducedMotion.addEventListener("change", showAmbientState);
+    showAmbientState();
 
     async function getJson(url, body) {
-      const response = await fetch(url, body && {
+      const options = body === undefined ? {} : {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail?.message || (typeof data.detail === "string" && data.detail) || `HTTP ${response.status}`);
-      return data;
+      };
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail?.message || (typeof data.detail === "string" && data.detail) || "HTTP " + response.status);
+      }
+      return response.json();
+    }
+
+    function releaseLabel(frame) {
+      return [...new Set(frame.observations.map(item => item.observation.release.toUpperCase()))].join(" / ");
     }
 
     function show() {
@@ -52,97 +318,169 @@
       const frame = series.frames[index];
       const pixels = context.createImageData(width, height);
       frame.preview.forEach((value, offset) => {
+        if (value < 0) return;
         const y = Math.floor(offset / width), x = offset % width;
         const target = 4 * ((height - 1 - y) * width + x);
-        if (value < 0) return;
-        pixels.data.set([value, value, value, 255], target);
+        if (gray) {
+          pixels.data.set([value, value, value, 255], target);
+        } else {
+          pixels.data.set([
+            Math.round(Math.min(255, 4 + value * 1.24)),
+            Math.round(Math.min(255, 6 + value * .92)),
+            Math.round(Math.min(255, 14 + value * .72)),
+            255
+          ], target);
+        }
       });
       context.putImageData(pixels, 0, 0);
-      if (overlay) {
-        context.strokeStyle = "#46eeff";
-        context.lineWidth = 0.4;
+      if (showOverlay && overlay) {
+        context.strokeStyle = "#9ce5ca";
+        context.lineWidth = .33;
+        context.beginPath();
         for (const source of overlay[index].sources) {
           if (!source.in_frame) continue;
-          context.beginPath();
-          context.arc(source.x_px + 0.5, height - source.y_px - 0.5, 1, 0, 2 * Math.PI);
-          context.stroke();
+          const x = source.x_px + .5, y = height - source.y_px - .5;
+          context.moveTo(x + .72, y);
+          context.arc(x, y, .72, 0, 2 * Math.PI);
         }
+        context.stroke();
       }
-      const ids = frame.observations.map(item => `${item.observation.release.toUpperCase()} ${item.observation.observation_id}`);
-      byId("metadata").textContent = `${index + 1}/${series.frames.length} · ${frame.observation_time} · ${ids.join(", ")} · ${frame.covered_pixels}/${width * height} píxeles válidos`;
+
+      const date = dateFormat.format(new Date(frame.observation_time));
+      canvas.setAttribute("aria-label", "Recorte infrarrojo de R Draconis del " + date);
+      byId("date").textContent = date;
+      const ids = frame.observations.map(item => item.observation.observation_id);
+      byId("product").textContent = releaseLabel(frame) + " · " + ids[0] + (ids.length > 1 ? " +" + (ids.length - 1) : "");
+      byId("coverage").textContent = numberFormat.format(frame.covered_pixels) + " / " + numberFormat.format(width * height);
+      byId("coverage-bar").value = frame.covered_pixels / (width * height);
+      byId("colour-legend").textContent = (gray ? "Tonos de gris." : "Falso color.") + " La escala se mantiene entre fechas.";
+      for (const [i, button] of [...timeline.children].entries()) {
+        button.setAttribute("aria-pressed", String(i === index));
+      }
     }
 
     function move(step) {
       index = (index + step + series.frames.length) % series.frames.length;
       show();
     }
-
-    byId("load").onclick = async () => {
-      byId("load").disabled = true;
+    function stop() {
       clearInterval(timer);
       timer = undefined;
-      byId("play").textContent = "Reproducir";
-      controls.forEach(button => button.disabled = true);
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      byId("metadata").textContent = "";
-      status.textContent = "Consultando IRSA…";
-      try {
-        series = await getJson("/api/spherex/frames", sample);
-        if (!series.frames.length) {
-          status.textContent = "Sin imágenes compatibles en esta banda.";
-          return;
-        }
-        const limits = series.display_limits_mjy_sr.map(value => Number(value.toPrecision(4)));
-        status.textContent = `Escala común ${limits.join(" a ")} MJy/sr. El fondo azul indica píxeles sin datos compatibles.`;
-        index = 0;
-        overlay = undefined;
-        catalogueStatus.textContent = "";
-        canvas.width = series.width;
-        canvas.height = series.height;
-        controls.forEach(button => button.disabled = false);
-        show();
-      } catch (error) {
-        status.textContent = `La serie no se pudo cargar. ${error.message}`;
-      } finally {
-        byId("load").disabled = false;
-      }
+      byId("play-icon").textContent = "▶";
+      byId("play-label").textContent = "Reproducir";
+    }
+    function play() {
+      timer = setInterval(() => move(1), 900 / Number(byId("speed").value));
+      byId("play-icon").textContent = "Ⅱ";
+      byId("play-label").textContent = "Pausar";
+    }
+    function selectEpoch(position) {
+      index = position;
+      show();
+    }
+
+    function setSeries(data) {
+      if (!data.frames.length) throw new Error("Sin imágenes compatibles en esta banda.");
+      stop();
+      series = data;
+      index = 0;
+      overlay = undefined;
+      showOverlay = false;
+      byId("gaia").setAttribute("aria-pressed", "false");
+      byId("catalogue-status").hidden = true;
+      canvas.width = data.width;
+      canvas.height = data.height;
+      byId("limits").textContent = data.display_limits_mjy_sr.map(value => numberFormat.format(value)).join(" – ") + " MJy/sr";
+      timeline.replaceChildren(...data.frames.map((frame, position) => {
+        const button = document.createElement("button");
+        const date = document.createElement("span");
+        date.textContent = dateFormat.format(new Date(frame.observation_time));
+        button.append(date, releaseLabel(frame));
+        button.type = "button";
+        button.className = "epoch";
+        button.onclick = () => { stop(); selectEpoch(position); };
+        return button;
+      }));
+      byId("view-message").hidden = true;
+      byId("field").hidden = false;
+      timeline.hidden = false;
+      controls.forEach(control => { control.disabled = false; });
+      show();
+    }
+
+    byId("previous").onclick = () => { stop(); move(-1); };
+    byId("next").onclick = () => { stop(); move(1); };
+    byId("play").onclick = () => { if (timer) stop(); else play(); };
+    byId("speed").onchange = () => { if (timer) { stop(); play(); } };
+    byId("zoom").onclick = () => {
+      zoomIndex = (zoomIndex + 1) % zoomLevels.length;
+      canvas.style.setProperty("--zoom", String(zoomLevels[zoomIndex]));
+      byId("zoom-label").textContent = numberFormat.format(zoomLevels[zoomIndex]) + "×";
+      byId("zoom").textContent = zoomIndex === zoomLevels.length - 1 ? "Volver a 1×" : "Zoom +";
+    };
+    byId("grayscale").onclick = () => {
+      gray = !gray;
+      byId("grayscale").setAttribute("aria-pressed", String(gray));
+      show();
     };
 
-    byId("previous").onclick = () => move(-1);
-    byId("next").onclick = () => move(1);
-    byId("play").onclick = () => {
-      if (timer) {
-        clearInterval(timer);
-        timer = undefined;
-      } else {
-        timer = setInterval(() => move(1), 700);
-      }
-      byId("play").textContent = timer ? "Pausar" : "Reproducir";
-    };
-    byId("gaia").onclick = async () => {
+    async function loadSeries(useArchive) {
+      const button = byId("load");
+      button.disabled = true;
+      const hadSeries = Boolean(series);
       byId("gaia").disabled = true;
+      byId("status").textContent = useArchive ? "Consultando IRSA…" : "Abriendo la serie guardada…";
+      try {
+        const data = useArchive ? await getJson("/api/spherex/frames", sample) : await getJson("/api/spherex/demo/series");
+        setSeries(data);
+        byId("status").textContent = useArchive ? "Serie actualizada desde IRSA." : "Serie guardada de tres observaciones verificadas.";
+      } catch (error) {
+        const message = "No se pudo cargar la serie. " + error.message;
+        byId("status").textContent = message;
+        if (!hadSeries) byId("view-message").textContent = message;
+      } finally {
+        button.disabled = false;
+        byId("gaia").disabled = !series;
+      }
+    }
+    byId("load").onclick = () => loadSeries(true);
+    byId("gaia").onclick = async () => {
+      const button = byId("gaia");
+      const status = byId("catalogue-status");
+      if (overlay) {
+        showOverlay = !showOverlay;
+        button.setAttribute("aria-pressed", String(showOverlay));
+        status.hidden = !showOverlay;
+        show();
+        return;
+      }
+      button.disabled = true;
       byId("load").disabled = true;
-      catalogueStatus.textContent = "Consultando y proyectando Gaia…";
+      status.hidden = false;
+      status.textContent = "Consultando y proyectando Gaia…";
       try {
         const params = new URLSearchParams({
           ra_deg: series.region.ra_deg, dec_deg: series.region.dec_deg,
           fov_arcmin: series.region.fov_arcmin, limit: 300,
           observation_time: series.frames.at(-1).observation_time
         });
-        const catalogue = await getJson(`/api/catalogues/gaia?${params}`);
+        const catalogue = await getJson("/api/catalogues/gaia?" + params);
         overlay = await Promise.all(series.frames.map(frame => getJson("/api/catalogues/gaia/project", {
           frame_id: frame.frame_id, observation_time: frame.observation_time, width: series.width,
           height: series.height, wcs_header: series.wcs_header, sources: catalogue.sources
         })));
-        catalogueStatus.textContent = catalogue.truncated ? "Gaia DR3 · catálogo truncado a 300 fuentes." : "Gaia DR3 · fuentes proyectadas a la fecha de cada frame.";
+        showOverlay = true;
+        button.setAttribute("aria-pressed", "true");
+        status.textContent = catalogue.truncated ? "Gaia DR3 · catálogo truncado a 300 fuentes." : "Gaia DR3 · fuentes proyectadas para cada fecha.";
         show();
       } catch (error) {
-        catalogueStatus.textContent = `Gaia no se pudo cargar. ${error.message}`;
-        byId("gaia").disabled = false;
+        status.textContent = "Gaia no se pudo cargar. " + error.message;
       } finally {
+        button.disabled = false;
         byId("load").disabled = false;
       }
     };
+    loadSeries(false);
   </script>
 </body>
 </html>

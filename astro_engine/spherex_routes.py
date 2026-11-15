@@ -276,3 +276,8 @@ def spherex_sample_target(target_id: str) -> dict[str, Any]:
 @router.get("/demo", include_in_schema=False)
 def blink_demo() -> FileResponse:
     return FileResponse(Path(__file__).with_name("spherex_demo.html"), media_type="text/html")
+
+
+@router.get("/demo/series", include_in_schema=False)
+def blink_demo_series() -> FileResponse:
+    return FileResponse(Path(__file__).with_name("spherex_demo_snapshot.json"), media_type="application/json")
