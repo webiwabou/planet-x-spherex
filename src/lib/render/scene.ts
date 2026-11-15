@@ -309,7 +309,9 @@ function drawScale(s: SceneInput, near: number) {
   const { ctx, c, v, theme } = s;
   let len = SCALE_STEPS[0];
   for (const step of SCALE_STEPS) if (step * c.zoom <= 150) len = step;
-  const w = len * c.zoom, x = 64, y = v.height - 112;
+  // On a phone the readout sits at the bottom left, so the scale bar moves to the top right
+  const narrow = v.width < 640;
+  const w = len * c.zoom, x = narrow ? v.width - 20 - w : 64, y = narrow ? 76 : v.height - 112;
   ctx.globalAlpha = near;
   ctx.strokeStyle = theme.ink;
   ctx.fillStyle = theme.ink;
@@ -322,7 +324,7 @@ function drawScale(s: SceneInput, near: number) {
   ctx.stroke();
   setFont(ctx, sansFont(theme, 11));
   ctx.fillText(formatAngle(len), x, y - 9);
-  const cx = 36, cy = v.height - 122, cp = Math.cos(c.pitch);
+  const cx = narrow ? x - 30 : 36, cy = narrow ? y - 10 : v.height - 122, cp = Math.cos(c.pitch);
   const rot = (px: number, py: number): [number, number] => [px * Math.cos(c.bearing) - py * Math.sin(c.bearing), px * Math.sin(c.bearing) + py * Math.cos(c.bearing)];
   const n = rot(0, -16), e = rot(-12, 0);
   ctx.beginPath();

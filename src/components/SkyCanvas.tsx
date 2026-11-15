@@ -32,12 +32,13 @@ type Props = {
   onInput: () => void;
   onClick?: (sx: number, sy: number) => void;
   onContextMenu?: (sx: number, sy: number) => void;
+  onLongPress?: (sx: number, sy: number) => void;
 };
 
-export function SkyCanvas({ area, onInput, onClick, onContextMenu }: Props) {
+export function SkyCanvas({ area, onInput, onClick, onContextMenu, onLongPress }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const handlers = useRef({ onInput, onClick, onContextMenu });
-  handlers.current = { onInput, onClick, onContextMenu };
+  const handlers = useRef({ onInput, onClick, onContextMenu, onLongPress });
+  handlers.current = { onInput, onClick, onContextMenu, onLongPress };
 
   useEffect(() => {
     const canvas = ref.current;
@@ -138,6 +139,7 @@ export function SkyCanvas({ area, onInput, onClick, onContextMenu }: Props) {
         flyTo({ x: z.x, y: z.y, zoom: z.zoom }, 260);
       },
       onContextMenu: (sx, sy) => handlers.current.onContextMenu?.(sx, sy),
+      onLongPress: (sx, sy) => handlers.current.onLongPress?.(sx, sy),
       onGlide: (vx, vy) => motion.glide(vx, vy),
     });
 

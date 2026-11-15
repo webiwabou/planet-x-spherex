@@ -61,7 +61,7 @@ export function StatusLine() {
       <div className="status" data-tone="warn" role="alert">
         <span>{headline}</span>
         {load.code === "no_fixture" && <span className="status-detail">Add ?data=live to the address to search the archive.</span>}
-        {load.message && load.code !== "no_fixture" && <span className="status-detail">{load.message}</span>}
+        {load.message && load.code !== "no_fixture" && load.code !== "network" && <span className="status-detail">{load.message}</span>}
         <span className="status-actions">
           {load.retryable && (
             <button type="button" onClick={retryLoad}>

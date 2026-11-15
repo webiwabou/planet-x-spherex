@@ -45,6 +45,7 @@ import { Timeline } from "./Timeline";
 
 const INTRO = "Pick a spot in the sky, watch it blink, and spot what moves. Each frame is a real SPHEREx infrared image of the same patch, taken months apart.";
 const HINT = "Pinch or scroll to dive in. Click a ring to fly there.";
+const TOUCH_HINT = "Pinch to dive in. Tap a ring to fly there.";
 
 // A typed position inside a target's field uses that target's curated series
 function visitPosition(raDeg: number, decDeg: number) {
@@ -88,6 +89,11 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
   const [radial, setRadial] = useState<RadialState>(null);
   const [introGone, setIntroGone] = useState(false);
   const [toastOn, setToastOn] = useState(false);
+  const [hint, setHint] = useState(HINT);
+
+  useEffect(() => {
+    if (window.matchMedia("(pointer: coarse)").matches) setHint(TOUCH_HINT);
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.add("spatial-fullscreen");
@@ -188,7 +194,7 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
       items.push({ label: "Visit before", run: () => stepVisit(-1) });
     }
     items.push({ label: "Copy coordinates", run: () => copyText(coords) });
-    items.push({ label: "Copy a link to this view", run: () => copyText(window.location.href) });
+    items.push({ label: "Copy a link", run: () => copyText(window.location.href) });
     items.push({ label: "Search the sky", run: () => setSearch(true) });
     if (L.macro < 0.6) {
       const flat = c.pitch > 0.3;
@@ -203,14 +209,15 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
   }, []);
 
   const openRadial = useCallback(
-    (sx: number, sy: number, viaKeyboard = false) => {
+    (sx: number, sy: number, viaKeyboard = false, viaTouch = false) => {
       const items = actionsAt(sx, sy);
       const [x, y] = radialCentre(sx, sy);
       setHelp(false);
-      setRadial({ x, y, items, viaKeyboard });
+      setRadial({ x, y, items, viaKeyboard, viaTouch });
     },
     [actionsAt],
   );
+  const openRadialByTouch = useCallback((sx: number, sy: number) => openRadial(sx, sy, false, true), [openRadial]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -300,7 +307,7 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
 
   return (
     <div ref={stage} className="sky-blink">
-      <SkyCanvas area={stage} onInput={closeFloating} onClick={onClick} onContextMenu={openRadial} />
+      <SkyCanvas area={stage} onInput={closeFloating} onClick={onClick} onContextMenu={openRadial} onLongPress={openRadialByTouch} />
       <SourceCard />
       {!embed && (
         <div className="brand">
@@ -319,7 +326,7 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
       </div>
       {!embed && (
         <div className="hint" data-gone={introGone}>
-          {HINT}
+          {hint}
         </div>
       )}
       <PlayButton />

@@ -1,6 +1,6 @@
 import { createVelocityTracker, createWheelClassifier, tiltBy, wheelPixels, wheelZoomFactor } from "./camera";
 import type { Camera, Limits, Viewport } from "./camera";
-import { panView, zoomView } from "./view";
+import { panView, project, unproject, zoomView } from "./view";
 
 export type WheelMode = "auto" | "zoom" | "pan";
 
@@ -20,8 +20,11 @@ export type GestureOptions = {
   onClick: (sx: number, sy: number) => void;
   onDoubleClick: (sx: number, sy: number, zoomOut: boolean) => void;
   onContextMenu: (sx: number, sy: number) => void;
+  onLongPress: (sx: number, sy: number) => void;
   onGlide: (vx: number, vy: number) => void;
 };
+
+const LONG_PRESS_MS = 550;
 
 export function attachGestures(o: GestureOptions) {
   const classify = createWheelClassifier();
@@ -29,6 +32,15 @@ export function attachGestures(o: GestureOptions) {
   let drag: { id: number; x: number; y: number; tilt: boolean; moved: number } | null = null;
   let lastMoved = 0;
   let pinchScale = 1;
+  const touches = new Map<number, { x: number; y: number }>();
+  let pinch: { dist: number; angle: number; mx: number; my: number } | null = null;
+  let longPress: ReturnType<typeof setTimeout> | undefined;
+  let lastPointerType = "mouse";
+
+  const twoFingers = () => {
+    const [a, b] = Array.from(touches.values());
+    return { dist: Math.hypot(b.x - a.x, b.y - a.y), angle: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+  };
 
   const local = (e: { clientX: number; clientY: number }) => {
     const r = o.surface.getBoundingClientRect();
@@ -58,6 +70,8 @@ export function attachGestures(o: GestureOptions) {
   };
   const onGestureChange = (e: Event) => {
     e.preventDefault();
+    // iOS also reports a touch pinch here; the pointer handlers already apply it
+    if (touches.size >= 2) return;
     const g = e as Event & { scale: number; clientX: number; clientY: number };
     const [sx, sy] = local(g);
     o.store.set((c) => zoomView(c, o.viewport(), o.limits(), sx, sy, g.scale / pinchScale));
@@ -67,9 +81,31 @@ export function attachGestures(o: GestureOptions) {
 
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
+    lastPointerType = e.pointerType;
     o.onInput();
     o.surface.focus({ preventScroll: true });
     o.surface.setPointerCapture(e.pointerId);
+    if (e.pointerType === "touch") {
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size === 2) {
+        // A second finger turns the drag into a pinch, without a throw
+        clearTimeout(longPress);
+        drag = null;
+        pinch = twoFingers();
+        return;
+      }
+      if (touches.size > 2) return;
+      const [sx, sy] = local(e);
+      clearTimeout(longPress);
+      longPress = setTimeout(() => {
+        if (drag && drag.moved < 8 && touches.size === 1) {
+          drag = null;
+          lastMoved = 99;
+          o.surface.dataset.dragging = "false";
+          o.onLongPress(sx, sy);
+        }
+      }, LONG_PRESS_MS);
+    }
     o.surface.dataset.dragging = "true";
     drag = { id: e.pointerId, x: e.clientX, y: e.clientY, tilt: e.altKey, moved: 0 };
     tracker.reset();
@@ -78,7 +114,28 @@ export function attachGestures(o: GestureOptions) {
 
   const onPointerMove = (e: PointerEvent) => {
     const [sx, sy] = local(e);
-    o.onPointer(sx, sy, true);
+    if (e.pointerType !== "touch") o.onPointer(sx, sy, true);
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && touches.size >= 2) {
+      const next = twoFingers();
+      const r = o.surface.getBoundingClientRect();
+      const [mx, my] = [next.mx - r.left, next.my - r.top];
+      const v = o.viewport();
+      const factor = pinch.dist > 0 ? next.dist / pinch.dist : 1;
+      const turn = next.angle - pinch.angle;
+      const shift = [next.mx - pinch.mx, next.my - pinch.my];
+      o.store.set((c) => {
+        const moved = panView(c, shift[0], shift[1]);
+        const zoomed = zoomView(moved, v, o.limits(), mx, my, factor);
+        // Rotate about the midpoint so the sky under the fingers stays put
+        const [wx, wy] = unproject(zoomed, v, mx, my);
+        const turned = { ...zoomed, bearing: zoomed.bearing + turn };
+        const [px, py] = project(turned, v, wx, wy);
+        return panView(turned, mx - px, my - py);
+      });
+      pinch = next;
+      return;
+    }
     if (!drag || e.pointerId !== drag.id) return;
     const dx = e.clientX - drag.x;
     const dy = e.clientY - drag.y;
@@ -91,6 +148,15 @@ export function attachGestures(o: GestureOptions) {
   };
 
   const endDrag = (e: PointerEvent) => {
+    if (touches.delete(e.pointerId)) {
+      clearTimeout(longPress);
+      if (pinch) {
+        if (touches.size < 2) pinch = null;
+        if (touches.size === 0) o.surface.dataset.dragging = "false";
+        lastMoved = 99;
+        return;
+      }
+    }
     if (!drag || e.pointerId !== drag.id) return;
     const wasTilt = drag.tilt;
     lastMoved = drag.moved;
@@ -114,6 +180,8 @@ export function attachGestures(o: GestureOptions) {
   };
   const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
+    // A touch long press opens the menu through its own timer
+    if (lastPointerType === "touch") return;
     o.onInput();
     const [sx, sy] = local(e);
     o.onContextMenu(sx, sy);
@@ -136,6 +204,7 @@ export function attachGestures(o: GestureOptions) {
   surface.addEventListener("contextmenu", onContextMenu);
 
   return () => {
+    clearTimeout(longPress);
     area.removeEventListener("wheel", onWheel);
     area.removeEventListener("gesturestart", onGestureStart);
     area.removeEventListener("gesturechange", onGestureChange);

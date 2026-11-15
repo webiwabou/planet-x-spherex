@@ -4,13 +4,18 @@ import { useEffect, useRef } from "react";
 import { camera, viewport } from "@/lib/viewer";
 
 export type RadialItem = { label: string; run: () => void };
-export type RadialState = { x: number; y: number; items: RadialItem[]; viaKeyboard: boolean } | null;
+export type RadialState = { x: number; y: number; items: RadialItem[]; viaKeyboard: boolean; viaTouch?: boolean } | null;
 
-const RX = 150, RY = 92, DEAD_ZONE = 24;
+const DEAD_ZONE = 24;
+
+// On narrow screens the ring tightens horizontally and stretches vertically so every label stays on screen
+const radii = () => (viewport.width < 640 ? { rx: Math.max(90, Math.min(150, viewport.width / 2 - 78)), ry: 132 } : { rx: 150, ry: 92 });
 
 export function radialCentre(sx: number, sy: number): [number, number] {
-  const cx = Math.min(Math.max(sx, Math.min(230, viewport.width / 2)), Math.max(viewport.width - 230, viewport.width / 2));
-  const cy = Math.min(Math.max(sy, Math.min(130, viewport.height / 2)), Math.max(viewport.height - 210, viewport.height / 2));
+  const { rx, ry } = radii();
+  const marginX = rx + 80, marginY = ry + 38;
+  const cx = Math.min(Math.max(sx, Math.min(marginX, viewport.width / 2)), Math.max(viewport.width - marginX, viewport.width / 2));
+  const cy = Math.min(Math.max(sy, Math.min(marginY, viewport.height / 2)), Math.max(viewport.height - marginY - 84, viewport.height / 2));
   return [cx, cy];
 }
 
@@ -29,9 +34,10 @@ export function RadialMenu({ state, onClose }: { state: RadialState; onClose: ()
       buttons.forEach((b, k) => (b.dataset.hot = String(k === i)));
     };
     // The item is chosen by direction, so the pointer never has to land on a small target
+    const { rx, ry } = radii();
     const hotAt = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
-      const dx = e.clientX - r.left, dy = ((e.clientY - r.top) * RX) / RY;
+      const dx = e.clientX - r.left, dy = ((e.clientY - r.top) * rx) / ry;
       if (Math.hypot(dx, dy) < DEAD_ZONE) return -1;
       const a = (Math.atan2(dy, dx) + Math.PI / 2 + 2 * Math.PI) % (2 * Math.PI);
       return Math.round(a / ((2 * Math.PI) / n)) % n;
@@ -40,11 +46,18 @@ export function RadialMenu({ state, onClose }: { state: RadialState; onClose: ()
       onClose();
       state.items[i]?.run();
     };
+    // The finger that long-pressed to open the menu can slide to an item and lift to choose it
+    let liftPending = !!state.viaTouch;
     const onMove = (e: PointerEvent) => setHot(hotAt(e));
     const onUp = (e: PointerEvent) => {
-      if (e.button !== 2) return;
+      const lift = liftPending && e.pointerType === "touch";
+      if (lift) liftPending = false;
+      if (e.button !== 2 && !lift) return;
       const i = hotAt(e);
-      if (i >= 0) run(i);
+      if (i >= 0) {
+        e.preventDefault();
+        run(i);
+      }
     };
     const onDown = (e: PointerEvent) => {
       if (e.button === 0 && !el.contains(e.target as Node)) onClose();
@@ -88,6 +101,7 @@ export function RadialMenu({ state, onClose }: { state: RadialState; onClose: ()
 
   if (!state) return null;
   const n = state.items.length;
+  const { rx: RX, ry: RY } = radii();
   return (
     <div ref={ref} className="radial" role="menu" aria-label="Actions" style={{ transform: `translate(${state.x}px, ${state.y}px)` }}>
       <span className="hub" aria-hidden="true" />

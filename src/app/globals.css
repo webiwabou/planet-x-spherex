@@ -580,13 +580,54 @@ html.spatial-fullscreen body {
   .readout .row {
     justify-content: flex-start;
   }
-  .readout .dim,
+  .readout .provenance,
   .help-btn {
     display: none;
   }
   .hint {
     bottom: auto;
     top: 120px;
+  }
+}
+
+@media (pointer: coarse) {
+  .play,
+  .menu-btn {
+    width: 44px;
+    height: 44px;
+    bottom: 38px;
+  }
+  .play {
+    left: 12px;
+  }
+  .menu-btn {
+    left: 62px;
+  }
+  .help-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .status-actions button {
+    padding: 8px 13px;
+  }
+}
+
+@media (max-width: 640px) {
+  .radial button {
+    max-width: 160px;
+    padding: 8px 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .readout .status {
+    margin-left: 0;
+    align-items: flex-start;
+  }
+  .status-actions {
+    justify-content: flex-start;
+  }
+  .search {
+    top: 60px;
   }
 }
 
