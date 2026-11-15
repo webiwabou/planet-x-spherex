@@ -24,7 +24,7 @@ export function levelOf(zoom: number): LevelName {
 
 export function viewLimits(v: Viewport, minTime = -Infinity, maxTime = Infinity): Limits {
   const minZoom = Math.min(v.width / 380, Math.max(1, v.height - 120) / 200) / 3600;
-  return { minZoom, maxZoom: 64 / PIXEL_ARCSEC, maxPitch: MAX_PITCH, minTime, maxTime };
+  return { minZoom, maxZoom: 160 / PIXEL_ARCSEC, maxPitch: MAX_PITCH, minTime, maxTime };
 }
 
 export const clampPosition = (c: Camera): Camera => ({

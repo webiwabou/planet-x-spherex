@@ -1,5 +1,7 @@
+import { centreChannel } from "./detectors";
 import presets from "./series-presets.json";
 import type { FieldSpec } from "./series";
+import { formatDec, formatRA, tangentOffset } from "./sky";
 
 export type TargetId = "barnards_star" | "epsilon_indi_b" | "wise_0855" | "rw_aurigae" | "r_draconis";
 
@@ -52,3 +54,37 @@ export function fieldSpecOf(target: Target, detectorId?: number): FieldSpec | nu
 }
 
 export const detectorsOf = (target: Target) => target.presets.map((p) => p.detector_id);
+
+// Positions anywhere else have no curated observations, so the backend picks them for the detector's middle channel
+export function skyFieldSpec(raDeg: number, decDeg: number, detectorId: number): FieldSpec {
+  const { wavelengthUm, bandwidthUm } = centreChannel(detectorId);
+  return {
+    key: `sky:${raDeg.toFixed(4)},${decDeg.toFixed(4)}`,
+    label: `${formatRA(raDeg)} ${formatDec(decDeg)}`,
+    targetId: null,
+    raDeg,
+    decDeg,
+    fovArcmin: 8,
+    detectorId,
+    wavelengthUm,
+    bandwidthUm,
+  };
+}
+
+// The backend's target list carries the propagated search centres, so they replace the built-in ones when available
+export function applyTargetCentres(results: { target_id: string; search_ra_deg: number; search_dec_deg: number }[]) {
+  for (const r of results) {
+    const t = TARGETS.find((x) => x.id === r.target_id);
+    if (t && Number.isFinite(r.search_ra_deg) && Number.isFinite(r.search_dec_deg)) {
+      t.raDeg = r.search_ra_deg;
+      t.decDeg = r.search_dec_deg;
+    }
+  }
+}
+
+export function targetNear(raDeg: number, decDeg: number): Target | null {
+  return TARGETS.find((t) => {
+    const offset = tangentOffset(t.raDeg, t.decDeg, raDeg, decDeg);
+    return !!offset && Math.hypot(offset[0], offset[1]) < t.fovArcmin * 60 * 1.5;
+  }) ?? null;
+}

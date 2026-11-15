@@ -6,14 +6,27 @@ import { positionAt } from "@/lib/series";
 import { formatAngle, formatDate, formatDec, formatRA } from "@/lib/sky";
 import { useCameraValue, useStoreValue } from "@/lib/store";
 import { LEVEL_LABELS, levelOf, unproject } from "@/lib/view";
-import { activeField, app, camera, onFrame, pointer, setRate, setStretch, skyAt, viewport } from "@/lib/viewer";
+import {
+  activeField,
+  app,
+  camera,
+  onFrame,
+  pointer,
+  setRate,
+  setStretch,
+  setViewWidth,
+  skyAt,
+  snapViewWidth,
+  viewport,
+  viewWidthArcmin,
+} from "@/lib/viewer";
 import { ScrubNumber } from "./ScrubNumber";
 
 export function Readout({ onHelp, helpOpen }: { onHelp: () => void; helpOpen: boolean }) {
   const level = useCameraValue(camera, (c) => levelOf(c.zoom));
   const apiKind = useStoreValue(app, (s) => s.apiKind);
   const where = useRef<HTMLDivElement>(null);
-  const view = useRef<HTMLDivElement>(null);
+  const detail = useRef<HTMLSpanElement>(null);
 
   useEffect(
     () =>
@@ -21,11 +34,12 @@ export function Readout({ onHelp, helpOpen }: { onHelp: () => void; helpOpen: bo
         const [wx, wy] = pointer.inside ? unproject(c, viewport, pointer.x, pointer.y) : [c.x, c.y];
         const [ra, dec] = skyAt(wx, wy);
         const f = activeField();
-        const parts = [`View is ${formatAngle(viewport.width / c.zoom)} wide`];
-        if (f) parts.push(`detector D${f.detectorId}`);
+        const parts: string[] = [];
+        if (f) parts.push(`Detector D${f.detectorId}`);
         if (f?.times.length) parts.push(formatDate(f.times[Math.round(positionAt(f.times, c.timestamp))]));
         if (where.current) where.current.textContent = `${formatRA(ra)}  ${formatDec(dec)}`;
-        if (view.current) view.current.textContent = parts.join(", ");
+        // The changing words come first so the draggable width stays put at the right edge
+        if (detail.current) detail.current.textContent = parts.length ? `${parts.join(", ")}, view is ` : "View is ";
       }),
     [],
   );
@@ -34,7 +48,24 @@ export function Readout({ onHelp, helpOpen }: { onHelp: () => void; helpOpen: bo
     <div className="readout">
       <div className="level">{LEVEL_LABELS[level]}</div>
       <div ref={where} className="tabular" />
-      <div ref={view} className="dim tabular" />
+      <div className="dim tabular view-line">
+        <span ref={detail}>View is </span>
+        <ScrubNumber
+          label="Width of the view"
+          read={viewWidthArcmin}
+          subscribe={camera.subscribe}
+          onChange={setViewWidth}
+          onCommit={snapViewWidth}
+          min={0.25}
+          max={60 * 400}
+          step={0.01}
+          keyStep={0.35}
+          digits={2}
+          format={(arcmin) => formatAngle(arcmin * 60)}
+          logScale
+        />{" "}
+        wide
+      </div>
       <div className="row">
         <span>
           Stretch{" "}

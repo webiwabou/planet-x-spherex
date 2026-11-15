@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { projector } from "@/lib/render/scene";
 import { positionAt } from "@/lib/series";
-import { formatDec, formatRA, tangentOffset, worldOf } from "@/lib/sky";
+import { formatDec, formatRA, worldOf } from "@/lib/sky";
 import { useStoreValue } from "@/lib/store";
-import { TARGETS, fieldSpecOf, targetByKey } from "@/lib/targets";
+import { TARGETS, applyTargetCentres, fieldSpecOf, skyFieldSpec, targetByKey, targetNear } from "@/lib/targets";
 import type { Target } from "@/lib/targets";
 import { readUrlView, worldAt, writeUrlView } from "@/lib/url";
 import { clampCamera, levelsOf, panView, unproject, zoomView } from "@/lib/view";
@@ -35,6 +35,7 @@ import { PlayButton } from "./PlayButton";
 import { RadialMenu, radialCentre } from "./RadialMenu";
 import type { RadialItem, RadialState } from "./RadialMenu";
 import { Readout } from "./Readout";
+import { SearchField } from "./SearchField";
 import { SkyCanvas } from "./SkyCanvas";
 import { Timeline } from "./Timeline";
 
@@ -48,11 +49,16 @@ function visitTarget(target: Target) {
   flyToSpec(spec);
 }
 
-function targetNear(raDeg: number, decDeg: number): Target | null {
-  return TARGETS.find((t) => {
-    const offset = tangentOffset(t.raDeg, t.decDeg, raDeg, decDeg);
-    return !!offset && Math.hypot(offset[0], offset[1]) < t.fovArcmin * 60 * 1.5;
-  }) ?? null;
+// A typed position inside a target's field uses that target's curated series
+function visitPosition(raDeg: number, decDeg: number) {
+  const target = targetNear(raDeg, decDeg);
+  const detectorId = app.get().detectorId;
+  const spec = target ? fieldSpecOf(target, detectorId) ?? fieldSpecOf(target) : skyFieldSpec(raDeg, decDeg, detectorId);
+  if (!spec) return;
+  void loadField(spec);
+  const [x, y] = worldAt(raDeg, decDeg, target ? spec : null);
+  const { zoom } = fieldCamera({ wx: x, wy: y, sizeArcsec: spec.fovArcmin * 60 });
+  flyTo({ x, y, zoom, pitch: 0, bearing: 0 });
 }
 
 function ringAt(sx: number, sy: number): Target | null {
@@ -80,13 +86,22 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
   const touched = useStoreValue(app, (s) => s.touched);
   const toastState = useStoreValue(app, (s) => s.toast);
   const [help, setHelp] = useState(false);
+  const [search, setSearch] = useState(false);
   const [radial, setRadial] = useState<RadialState>(null);
   const [introGone, setIntroGone] = useState(false);
   const [toastOn, setToastOn] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.add("spatial-fullscreen");
-    return () => document.documentElement.classList.remove("spatial-fullscreen");
+    // Any pointer or key input counts as first use, which fades the intro
+    const first = () => markTouched();
+    window.addEventListener("pointerdown", first, true);
+    window.addEventListener("keydown", first, true);
+    return () => {
+      document.documentElement.classList.remove("spatial-fullscreen");
+      window.removeEventListener("pointerdown", first, true);
+      window.removeEventListener("keydown", first, true);
+    };
   }, []);
 
   useEffect(() => {
@@ -104,7 +119,8 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
 
   useEffect(() => {
     dom.stage = stage.current;
-    getApi();
+    const api = getApi();
+    if (api.kind === "live") api.targets().then(applyTargetCentres, () => {});
     const restored = readUrlView(new URLSearchParams(window.location.search));
     if (restored) {
       const target = targetNear(restored.raDeg, restored.decDeg);
@@ -153,9 +169,11 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
   }, []);
 
   const closeRadial = useCallback(() => setRadial(null), []);
+  const closeSearch = useCallback(() => setSearch(false), []);
   const closeFloating = useCallback(() => {
     setHelp(false);
     setRadial(null);
+    setSearch(false);
   }, []);
 
   const actionsAt = useCallback((sx: number, sy: number): RadialItem[] => {
@@ -172,6 +190,8 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
       items.push({ label: "Visit before", run: () => stepVisit(-1) });
     }
     items.push({ label: "Copy coordinates", run: () => copyText(coords) });
+    items.push({ label: "Copy a link to this view", run: () => copyText(window.location.href) });
+    items.push({ label: "Search the sky", run: () => setSearch(true) });
     if (L.macro < 0.6) {
       const flat = c.pitch > 0.3;
       items.push({ label: flat ? "Lay the plate flat" : "Stand the plate up", run: () => flyTo({ pitch: flat ? 0 : 0.95, bearing: flat ? 0 : -0.35 }, 700) });
@@ -210,6 +230,13 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
       if (k === "?") {
         setHelp((h) => !h);
         e.preventDefault();
+        return;
+      }
+      if (k === "/") {
+        e.preventDefault();
+        setRadial(null);
+        setHelp(false);
+        setSearch(true);
         return;
       }
       const t = e.target;
@@ -277,6 +304,7 @@ export function SkyBlink({ embed = false }: { embed?: boolean }) {
       )}
       <Readout onHelp={() => setHelp((h) => !h)} helpOpen={help} />
       <HelpSheet open={help} />
+      <SearchField open={search} onClose={closeSearch} onTarget={visitTarget} onPosition={visitPosition} />
       <RadialMenu state={radial} onClose={closeRadial} />
       <div className="toast" role="status" data-on={toastOn}>
         {toastState?.text}

@@ -145,6 +145,91 @@ html.spatial-fullscreen body {
     font-variant-numeric: tabular-nums;
   }
 
+  .readout .scrub,
+  .readout .scrub-input {
+    pointer-events: auto;
+  }
+
+  .search {
+    position: absolute;
+    left: 50%;
+    top: 18px;
+    transform: translateX(-50%);
+    width: min(440px, calc(100% - 32px));
+    z-index: 6;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  }
+  .search input {
+    width: 100%;
+    font: 500 16px var(--font-sans), system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--ground);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 12px;
+    outline: none;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  .search input:focus-visible {
+    border-color: var(--signal);
+  }
+  .search input::placeholder {
+    color: var(--mute);
+  }
+  .search-error {
+    color: var(--warn);
+    padding: 8px 6px 4px;
+  }
+  .search-note {
+    color: var(--mute);
+    padding: 8px 6px 4px;
+  }
+  .search-list {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+  }
+  .search-list button {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: baseline;
+    gap: 10px;
+    text-align: left;
+    background: transparent;
+    color: var(--ink);
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font: inherit;
+  }
+  .search-list button[data-on="true"] {
+    background: var(--ground);
+  }
+  .search-name {
+    font: italic 400 18px/1.1 var(--font-serif), Georgia, serif;
+    white-space: nowrap;
+  }
+  .search-blurb {
+    color: var(--mute);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .search-list kbd {
+    font: 600 12px var(--font-sans), system-ui, sans-serif;
+    color: var(--mute);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0 5px;
+  }
+
   .scrub {
     cursor: ew-resize;
     border-bottom: 1px dashed var(--mute);

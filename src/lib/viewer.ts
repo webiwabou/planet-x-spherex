@@ -151,6 +151,23 @@ export function flyToSpec(spec: FieldSpec) {
   flyTo(fieldCamera({ wx, wy, sizeArcsec: spec.fovArcmin * 60 }));
 }
 
+// The field of view is the zoom, written as the width of the view in arcminutes
+
+export const viewWidthArcmin = () => viewport.width / camera.get().zoom / 60;
+
+export function setViewWidth(arcmin: number) {
+  motion.stop();
+  camera.set((c) => clampCamera({ ...c, zoom: viewport.width / (Math.max(0.01, arcmin) * 60) }, limits()));
+}
+
+const FOV_SNAPS = [1, 2, 5, 10];
+
+export function snapViewWidth(arcmin: number) {
+  if (arcmin < 0.7 || arcmin > 14) return;
+  const snap = FOV_SNAPS.reduce((best, s) => (Math.abs(Math.log(s / arcmin)) < Math.abs(Math.log(best / arcmin)) ? s : best));
+  flyTo({ zoom: viewport.width / (snap * 60) }, 200);
+}
+
 // Time
 
 let snapTimer: ReturnType<typeof setTimeout> | undefined;

@@ -14,11 +14,13 @@ type Props = {
   keyStep?: number;
   digits: number;
   format?: (value: number) => string;
+  logScale?: boolean;
 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-export function ScrubNumber({ label, read, subscribe, onChange, onCommit, min, max, step, keyStep = step, digits, format }: Props) {
+export function ScrubNumber({ label, read, subscribe, onChange, onCommit, min, max, step, keyStep = step, digits, format, logScale = false }: Props) {
+  const nudge = (value: number, amount: number) => clamp(logScale ? value * Math.exp(amount) : value + amount, min, max);
   const ref = useRef<HTMLSpanElement>(null);
   const [editing, setEditing] = useState(false);
   const show = (v: number) => (format ? format(v) : v.toFixed(digits));
@@ -51,8 +53,8 @@ export function ScrubNumber({ label, read, subscribe, onChange, onCommit, min, m
     }
     const move = (m: PointerEvent) => {
       const scale = m.shiftKey ? 10 : m.altKey ? 0.1 : 1;
-      current = clamp(current + m.movementX * step * scale, min, max);
-      onChange(current);
+      onChange(nudge(current, m.movementX * step * scale));
+      current = read();
     };
     const up = () => {
       try {
@@ -75,7 +77,7 @@ export function ScrubNumber({ label, read, subscribe, onChange, onCommit, min, m
     if (dir) {
       e.preventDefault();
       e.stopPropagation();
-      const next = clamp(read() + dir * keyStep * (e.shiftKey ? 10 : e.altKey ? 0.1 : 1), min, max);
+      const next = nudge(read(), dir * keyStep * (e.shiftKey ? 10 : e.altKey ? 0.1 : 1));
       onChange(next);
       onCommit?.(next);
     } else if (e.key === "Enter") {

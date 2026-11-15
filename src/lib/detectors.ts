@@ -23,3 +23,12 @@ export function detectorAt(wavelengthUm: number): Detector {
 export const isDetectorId = (value: number): value is DetectorId => Number.isInteger(value) && value >= 1 && value <= 6;
 
 export const formatRange = (d: Detector) => `${d.minUm.toFixed(2)} to ${d.maxUm.toFixed(2)} µm`;
+
+// SPHEREx resolving power per detector; one channel is about wavelength / R wide
+export const RESOLVING_POWER: Record<DetectorId, number> = { 1: 41, 2: 41, 3: 41, 4: 35, 5: 110, 6: 130 };
+
+export function centreChannel(id: number): { wavelengthUm: number; bandwidthUm: number } {
+  const d = detector(id);
+  const wavelengthUm = (d.minUm + d.maxUm) / 2;
+  return { wavelengthUm: Number(wavelengthUm.toFixed(4)), bandwidthUm: Number((wavelengthUm / RESOLVING_POWER[d.id]).toFixed(4)) };
+}
