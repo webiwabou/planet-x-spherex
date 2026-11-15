@@ -203,6 +203,7 @@ def search_observations(
     *,
     releases: tuple[Literal["dr1", "qr3"], ...] = RELEASES,
     detector_id: int | None = None,
+    allow_partial: bool = False,
     transport: httpx.BaseTransport | None = None,
 ) -> ArchiveSearch:
     if not 1 <= limit <= SIA_MAX_ROWS:
@@ -216,13 +217,22 @@ def search_observations(
     position = f"circle {region.ra_deg:.12g} {region.dec_deg:.12g} {radius:.12g}"
     by_id = {}
     truncated = False
+    failed = []
     with httpx.Client(timeout=25, transport=transport, follow_redirects=False) as client:
         for release in releases:
             try:
-                params = {"COLLECTION": f"spherex_{release}", "POS": position, "MAXREC": SIA_MAX_ROWS}
-                data = _read_response(client, SIA_URL, params, SIA_MAX_BYTES)
+                params = {"POS": position, "COLLECTION": f"spherex_{release}"}
+                try:
+                    data = _read_response(client, SIA_URL, params, SIA_MAX_BYTES)
+                except httpx.HTTPStatusError as exc:
+                    if not allow_partial or exc.response.status_code not in {502, 503, 504}:
+                        raise
+                    data = _read_response(client, SIA_URL, {**params, "RESPONSEFORMAT": "VOTABLE"}, SIA_MAX_BYTES)
                 items, overflow = _read_observations(data, release)
             except (httpx.HTTPError, ValueError, TypeError, IndexError, OSError) as exc:
+                failed.append(release)
+                if allow_partial and len(failed) < len(releases):
+                    continue
                 raise ArchiveUnavailable(f"IRSA SIA did not return usable {release.upper()} data") from exc
             truncated |= overflow
             for observation, version in items:
@@ -240,6 +250,10 @@ def search_observations(
     warnings = [
         {"code": "truncated", "message": "The requested field has more observations than returned."}
     ] if truncated else []
+    warnings.extend(
+        {"code": "archive_release_unavailable", "message": f"IRSA no respondió para {release.upper()}."}
+        for release in failed
+    )
     return ArchiveSearch(region=region, observations=ordered[:limit], truncated=truncated, warnings=warnings)
 
 
@@ -367,9 +381,14 @@ def package_cutouts_mef(
             versions.append(version)
             urls.append(build_cutout_url(obs, region))
 
+            renamed = {hdu.name: f"{hdu.name}{idx}" for hdu in hdul[1:]}
             for hdu in hdul[1:]:
                 copied = hdu.copy()
-                copied.header["EXTNAME"] = f"{copied.header['EXTNAME']}{idx}"
+                copied.header["EXTNAME"] = renamed[hdu.name]
+                for key in ("PS1_0W", "PS2_0W"):
+                    referent = copied.header.get(key)
+                    if referent in renamed:
+                        copied.header[key] = renamed[referent]
                 all_hdus.append(copied)
 
     cols = fits.ColDefs([

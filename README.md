@@ -15,13 +15,12 @@ python -m venv .venv
 
 On Linux or macOS, use `.venv/bin/python` for the two commands after creating the environment.
 
-- [SPHEREx blink viewer](http://localhost:8000/api/spherex/demo) — load the R Draconis series and optionally enable Gaia.
-- [Gaia catalogue viewer](http://localhost:8000/catalogues/demo) — choose **Ver ejemplo guardado** for a saved field, or query Gaia.
+- [SPHEREx explorer](http://localhost:8000/explorer) — choose one of the five benchmark fields or enter coordinates, select a detector and passband, compare epochs, download FITS, and inspect Gaia sources on the same screen.
 - [Interactive API reference](http://localhost:8000/docs) — request schemas for observations, cutouts, frames and catalogue projection.
 - [SPHEREx API & Data Contract](docs/SPHEREX_API.md) — documented inputs, outputs, and FITS metadata schema for Member 1's SPHEREx data retrieval & backend module.
 - [NASA 5-Target SPHEREx Validation Report](docs/SPHEREX_VALIDATION.md) — live archive verification and sample FITS cutouts (`resources/sample_data/` & `resources/spherex/samples/`) generated via `astro_engine/spherex_sample.py`.
 
-The live demos require access to IRSA and the ESA Gaia Archive. The saved Gaia example runs locally. The blink viewer is a quick-look tool with selected observation IDs.
+The saved SPHEREx and Gaia observations work offline. Live queries need network access to IRSA or the ESA Gaia Archive. Each saved cutout is shown at its own observed passband. A live search checks a bounded sample of the requested detector and retains pixels only when their passbands overlap the requested band.
 
 ## Run the sky viewer
 
@@ -43,7 +42,7 @@ docker build -t planet-x-spherex .
 docker run --rm -p 8000:8000 planet-x-spherex
 ```
 
-The image serves the sky viewer at http://localhost:8000/ and the API under `/api` from the same origin. It builds the frontend as a static export in `auto` mode, so the five targets open instantly from recordings and other positions query IRSA through the backend. The backend serves the export only when `WEB_DIR` is set, as the image does, so local runs are unchanged.
+The image serves the sky viewer at http://localhost:8000/, the explorer at `/explorer` and the API under `/api`, all from the same origin. It builds the frontend as a static export in `auto` mode, so the five targets open instantly from recordings and other positions query IRSA through the backend. The backend serves the export only when `WEB_DIR` is set, as the image does, so local runs are unchanged.
 
 The backend exposes `/health`. Set `SPHEREX_CACHE_DIR` and `GAIA_CACHE_DIR` to writable directories to control local cache storage.
 
